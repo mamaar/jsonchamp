@@ -8,6 +8,7 @@ import (
 )
 
 func marshalValue(m any) ([]byte, error) {
+	m = toLargestType(m)
 	buf := &bytes.Buffer{}
 	switch v := m.(type) {
 	case string:
@@ -22,16 +23,16 @@ func marshalValue(m any) ([]byte, error) {
 			return nil, fmt.Errorf("error marshalling string array: %w", err)
 		}
 		buf.WriteString(string(js))
-	case int:
-		j, err := json.Marshal(v)
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling int: %w", err)
-		}
-		buf.WriteString(string(j))
 	case bool:
 		j, err := json.Marshal(v)
 		if err != nil {
 			return nil, fmt.Errorf("error marshalling bool: %w", err)
+		}
+		buf.WriteString(string(j))
+	case int64:
+		j, err := json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling int: %w", err)
 		}
 		buf.WriteString(string(j))
 	case float64:
