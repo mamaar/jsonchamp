@@ -223,6 +223,10 @@ func (m *Map) Equals(other *Map) bool {
 	return true
 }
 
+func castPair[T any](a any, b any) (T, T) {
+	return a.(T), b.(T)
+}
+
 func (m *Map) Diff(other *Map) (*Map, error) {
 	diff := New()
 
@@ -250,8 +254,7 @@ func (m *Map) Diff(other *Map) (*Map, error) {
 		}
 		switch oneValue.(type) {
 		case *Map:
-			oneMap := oneValue.(*Map)
-			otherMap := otherValue.(*Map)
+			oneMap, otherMap := castPair[*Map](oneValue, otherValue)
 			subDiff, err := oneMap.Diff(otherMap)
 			if err != nil {
 				return nil, err
@@ -260,14 +263,12 @@ func (m *Map) Diff(other *Map) (*Map, error) {
 				diff = diff.Set(k, subDiff)
 			}
 		case string:
-			oneString := oneValue.(string)
-			otherString := otherValue.(string)
+			oneString, otherString := castPair[string](oneValue, otherValue)
 			if oneString != otherString {
 				diff = diff.Set(k, otherString)
 			}
 		case int:
-			oneInt := oneValue.(int)
-			otherInt := otherValue.(int)
+			oneInt, otherInt := castPair[int](oneValue, otherValue)
 			if oneInt != otherInt {
 				diff = diff.Set(k, otherInt)
 			}

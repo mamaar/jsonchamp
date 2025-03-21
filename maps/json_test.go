@@ -31,13 +31,49 @@ func TestHeterogeneousMap_UnmarshalJSON(t *testing.T) {
 			name:     "number value",
 			args:     args{d: []byte(`{"name":42}`)},
 			wantErr:  false,
-			expected: NewFromItems("name", 42.0),
+			expected: NewFromItems("name", 42),
 		},
 		{
 			name:     "multiple items",
 			args:     args{d: []byte(`{"name": "John Doe", "nested": { "gender": "non-binary" } }`)},
 			wantErr:  false,
 			expected: NewFromItems("name", "John Doe", "nested", NewFromItems("gender", "non-binary")),
+		},
+		{
+			name:     "array of floats",
+			args:     args{d: []byte(`{"numbers": [1.0, 2.0, 3.0]}`)},
+			wantErr:  false,
+			expected: NewFromItems("numbers", []any{1.0, 2.0, 3.0}),
+		},
+		{
+			name:     "array of strings",
+			args:     args{d: []byte(`{"names": ["John", "Doe"]}`)},
+			wantErr:  false,
+			expected: NewFromItems("names", []any{"John", "Doe"}),
+		},
+		{
+			name:     "array of maps",
+			args:     args{d: []byte(`{"sections": [ { "name": "John" }, { "name": "Doe" } ] }`)},
+			expected: NewFromItems("sections", []any{NewFromItems("name", "John"), NewFromItems("name", "Doe")}),
+			wantErr:  false,
+		},
+		{
+			name:     "array of ints",
+			args:     args{d: []byte(`{"numbers": [1, 2, 3]}`)},
+			expected: NewFromItems("numbers", []any{1, 2, 3}),
+			wantErr:  false,
+		},
+		{
+			name:     "array of bools",
+			args:     args{d: []byte(`{"bools": [true, false]}`)},
+			expected: NewFromItems("bools", []any{true, false}),
+			wantErr:  false,
+		},
+		{
+			name:     "array of arrays",
+			args:     args{d: []byte(`{"arrays": [[1, 2], [3, 4]]}`)},
+			expected: NewFromItems("arrays", []any{[]any{1, 2}, []any{3, 4}}),
+			wantErr:  false,
 		},
 		{
 			name:    "invalid",
@@ -62,6 +98,10 @@ func TestHeterogeneousMap_UnmarshalJSON(t *testing.T) {
 				t.Fatalf("expected error %v, got %v", tt.wantErr, err)
 			}
 			if !actual.Equals(tt.expected) {
+				actMap := actual.ToMap()
+				expMap := tt.expected.ToMap()
+				t.Logf("expected: %v", expMap)
+				t.Logf("actual: %v", actMap)
 				t.Fatalf("expected %v, got %v", tt.expected, actual)
 			}
 		})

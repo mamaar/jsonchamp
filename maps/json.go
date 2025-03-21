@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 func marshalValue(m any) ([]byte, error) {
@@ -84,15 +85,15 @@ func (m *Map) MarshalJSON() ([]byte, error) {
 	return b, nil
 }
 
-func unmarshalArray(dec *json.Decoder, m *Map, key string) (*Map, error) {
+func unmarshalArray(dec *json.Decoder, key string) ([]any, error) {
 	var arr []any
 	for {
 		token, err := dec.Token()
 		if err != nil {
-			return New(), fmt.Errorf("could not get token: %w", err)
+			return nil, fmt.Errorf("could not get token: %w", err)
 		}
 		if token == json.Delim(']') {
-			return m.Set(key, arr), nil
+			return arr, nil
 		}
 		switch v := token.(type) {
 		case json.Delim:
@@ -101,16 +102,38 @@ func unmarshalArray(dec *json.Decoder, m *Map, key string) (*Map, error) {
 				newMap := New()
 				newMap, err := unmarshalMap(dec, newMap)
 				if err != nil {
-					return New(), err
+					return nil, fmt.Errorf("error unmarshalling map: %w", err)
 				}
 				arr = append(arr, newMap)
-			case '}':
-				return m.Set(key, arr), nil
+			case '[':
+				newArr, err := unmarshalArray(dec, key)
+				if err != nil {
+					return nil, fmt.Errorf("could not unmarshal array: %w", err)
+				}
+				arr = append(arr, newArr)
 			default:
-				return New(), fmt.Errorf("unexpected delimiter %c", v)
+				return nil, fmt.Errorf("unexpected delimiter %c", v)
 			}
+		case string:
+			arr = append(arr, v)
+		case json.Number:
+			if strings.Contains(string(v), ".") {
+				f, err := v.Float64()
+				if err != nil {
+					return nil, fmt.Errorf("could not convert number to float: %w", err)
+				}
+				arr = append(arr, f)
+			} else {
+				i, err := v.Int64()
+				if err != nil {
+					return nil, fmt.Errorf("could not convert number to int: %w", err)
+				}
+				arr = append(arr, i)
+			}
+		case bool:
+			arr = append(arr, v)
 		default:
-			return New(), fmt.Errorf("unexpected type %T", v)
+			return nil, fmt.Errorf("unexpected type %T", v)
 		}
 	}
 }
@@ -135,8 +158,20 @@ func unmarshalMap(dec *json.Decoder, m *Map) (*Map, error) {
 		switch v := valueToken.(type) {
 		case string:
 			m = m.Set(keyString, v)
-		case float64:
-			m = m.Set(keyString, v)
+		case json.Number:
+			if strings.Contains(string(v), ".") {
+				f, err := v.Float64()
+				if err != nil {
+					return nil, fmt.Errorf("could not convert number to float: %w", err)
+				}
+				m = m.Set(keyString, f)
+			} else {
+				i, err := v.Int64()
+				if err != nil {
+					return nil, fmt.Errorf("could not convert number to int: %w", err)
+				}
+				m = m.Set(keyString, i)
+			}
 		case bool:
 			m = m.Set(keyString, v)
 		case json.Delim:
@@ -149,7 +184,11 @@ func unmarshalMap(dec *json.Decoder, m *Map) (*Map, error) {
 				}
 				m = m.Set(keyString, newMap)
 			case '[':
-				return unmarshalArray(dec, m, keyString)
+				arr, err := unmarshalArray(dec, keyString)
+				if err != nil {
+					return nil, fmt.Errorf("could not unmarshal array: %w", err)
+				}
+				m = m.Set(keyString, arr)
 			default:
 				return nil, fmt.Errorf("unexpected delimiter %c", v)
 			}
@@ -172,6 +211,7 @@ func (m *Map) UnmarshalJSON(d []byte) error {
 		}
 	}
 	dec := json.NewDecoder(bytes.NewReader(d))
+	dec.UseNumber()
 	token, err := dec.Token()
 	if err != nil {
 		return fmt.Errorf("invalid JSON: %w", err)

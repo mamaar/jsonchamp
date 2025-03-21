@@ -43,7 +43,40 @@ func EqualsStringList(a []string, b []string) bool {
 	return true
 }
 
+func toLargestType(a any) any {
+	switch v := a.(type) {
+	case int:
+		return int64(v)
+	case int8:
+		return int64(v)
+	case int16:
+		return int64(v)
+	case int32:
+		return int64(v)
+	case int64:
+		return v
+	case uint:
+		return uint64(v)
+	case uint8:
+		return uint64(v)
+	case uint16:
+		return uint64(v)
+	case uint32:
+		return uint64(v)
+	case uint64:
+		return v
+	case float32:
+		return float64(v)
+	case float64:
+		return v
+	default:
+		return a
+	}
+}
+
 func EqualsAny(a any, b any) bool {
+	a = toLargestType(a)
+	b = toLargestType(b)
 	if reflect.TypeOf(a) != reflect.TypeOf(b) {
 		return false
 	}
@@ -51,12 +84,6 @@ func EqualsAny(a any, b any) bool {
 	case string:
 		stringEquals := a.(string) == b.(string)
 		return stringEquals
-	case int:
-		intEquals := a.(int) == b.(int)
-		return intEquals
-	case int32:
-		int32Equals := a.(int32) == b.(int32)
-		return int32Equals
 	case int64:
 		int64Equals := a.(int64) == b.(int64)
 		return int64Equals
@@ -70,6 +97,8 @@ func EqualsAny(a any, b any) bool {
 		return EqualsAnyList(a.([]any), b.([]any))
 	case []string:
 		return EqualsStringList(a.([]string), b.([]string))
+	case bool:
+		return a.(bool) == b.(bool)
 	case nil:
 		return a == nil && b == nil
 	default:

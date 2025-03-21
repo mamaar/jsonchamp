@@ -2,16 +2,6 @@ package maps
 
 import "reflect"
 
-// diffString checks that the two strings are equal and returns a string containing the other string and the equality result.
-func diffString(one string, other string) (string, bool) {
-	return other, one != other
-}
-
-// diffInt checks that the two integers are equal and returns an int containing the other integer and the equality result.
-func diffInt(one int, other int) (int, bool) {
-	return other, one != other
-}
-
 func mapToAnySlice(in any) []any {
 	if reflect.TypeOf(in).Kind() != reflect.Slice {
 		return []any{}
