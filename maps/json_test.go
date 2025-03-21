@@ -122,6 +122,30 @@ func TestHeterogeneousMap_MarshalJSON(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "int value",
+			m:       NewFromItems("name", int64(42)),
+			want:    `{"name":42}`,
+			wantErr: false,
+		},
+		{
+			name:    "float value",
+			m:       NewFromItems("name", 42.1),
+			want:    `{"name":42.1}`,
+			wantErr: false,
+		},
+		{
+			name:    "array of ints",
+			m:       NewFromItems("numbers", []any{1, 2, 3}),
+			want:    `{"numbers":[1,2,3]}`,
+			wantErr: false,
+		},
+		{
+			name:    "array of floats",
+			m:       NewFromItems("numbers", []any{1.0, 2.0, 3.0}),
+			want:    `{"numbers":[1.0,2.0,3.0]}`,
+			wantErr: false,
+		},
+		{
 			name:    "nested",
 			m:       NewFromItems("items", NewFromItems("key", "value")),
 			want:    `{"items":{"key":"value"}}`,
