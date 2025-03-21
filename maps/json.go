@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -11,29 +13,10 @@ func marshalValue(m any) ([]byte, error) {
 	m = toLargestType(m)
 	buf := &bytes.Buffer{}
 	switch v := m.(type) {
-	case []any:
-		buf.WriteString("[")
-		for i, val := range v {
-			d, err := marshalValue(val)
-			if err != nil {
-				return nil, err
-			}
-			buf.WriteString(string(d))
-			if i < len(v)-1 {
-				buf.WriteString(",")
-			}
-		}
-		buf.WriteString("]")
 	case string:
 		js, err := json.Marshal(v)
 		if err != nil {
 			return nil, fmt.Errorf("error marshalling string: %w", err)
-		}
-		buf.WriteString(string(js))
-	case []string:
-		js, err := json.Marshal(v)
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling string array: %w", err)
 		}
 		buf.WriteString(string(js))
 	case bool:
@@ -49,11 +32,10 @@ func marshalValue(m any) ([]byte, error) {
 		}
 		buf.WriteString(string(j))
 	case float64:
-		j, err := json.Marshal(v)
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling float64: %w", err)
+		buf.WriteString(strconv.FormatFloat(v, 'f', -1, 64))
+		if !strings.Contains(buf.String(), ".") {
+			buf.WriteString(".0")
 		}
-		buf.WriteString(string(j))
 	case *Map:
 		buf.WriteString("{")
 		keys := v.Keys()
@@ -74,7 +56,24 @@ func marshalValue(m any) ([]byte, error) {
 	case nil:
 		buf.WriteString("null")
 	default:
-		return nil, fmt.Errorf("could not marshal type: %T", v)
+		unknown := reflect.ValueOf(v)
+		switch {
+		case unknown.Kind() == reflect.Slice:
+			buf.WriteString("[")
+			for i := range unknown.Len() {
+				valMarshal, err := marshalValue(unknown.Index(i).Interface())
+				if err != nil {
+					return nil, fmt.Errorf("could not marshal slice item: %w", err)
+				}
+				buf.Write(valMarshal)
+				if i < unknown.Len()-1 {
+					buf.WriteString(",")
+				}
+			}
+			buf.WriteString("]")
+		default:
+			return nil, fmt.Errorf("could not marshal type: %T", v)
+		}
 	}
 	return buf.Bytes(), nil
 }
