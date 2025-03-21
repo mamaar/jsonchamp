@@ -11,6 +11,19 @@ func marshalValue(m any) ([]byte, error) {
 	m = toLargestType(m)
 	buf := &bytes.Buffer{}
 	switch v := m.(type) {
+	case []any:
+		buf.WriteString("[")
+		for i, val := range v {
+			d, err := marshalValue(val)
+			if err != nil {
+				return nil, err
+			}
+			buf.WriteString(string(d))
+			if i < len(v)-1 {
+				buf.WriteString(",")
+			}
+		}
+		buf.WriteString("]")
 	case string:
 		js, err := json.Marshal(v)
 		if err != nil {
