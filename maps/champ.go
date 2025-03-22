@@ -376,8 +376,8 @@ func (m *Map) GetInt(key string) (int, error) {
 
 // Set implements node.
 func (m *Map) Set(key string, value any) *Map {
-	hash := m.hash(key)
-	m.root = m.root.Set(NewKey(key, hash), value).(*bitmasked)
+	h := m.hash(key)
+	m.root = m.root.Set(NewKey(key, h), value).(*bitmasked)
 	return m
 }
 
@@ -492,4 +492,22 @@ func RefToLookup(ref *Map) []string {
 		return []string{}
 	}
 	return strings.Split(parts[1], "/")
+}
+
+// Get retrieves the value of a key from a map and casts it to the desired type.
+// It can return errors if the key is not found or if the value is not of the expected type.
+func Get[T any](m *Map, key string) (T, error) {
+	v, ok := m.Get(key)
+	if !ok {
+		var zero T
+		return zero, fmt.Errorf("%w: '%s'", ErrKeyNotFound, key)
+	}
+
+	casted, ok := v.(T)
+	if !ok {
+		var zero T
+		return zero, fmt.Errorf("%w: '%s'", ErrWrongType, key)
+	}
+
+	return casted, nil
 }
