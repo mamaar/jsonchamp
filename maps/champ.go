@@ -32,86 +32,7 @@ type KeyValue struct {
 
 const (
 	BitPartitionSize = 6
-	PartitionMask    = (1 << BitPartitionSize) - 1
 )
-
-type node interface {
-	Get(key Key) (any, bool)
-	Set(key Key, value any) node
-}
-
-type value struct {
-	key   Key
-	value any
-}
-
-// Get implements node.
-func (v *value) Get(key Key) (any, bool) {
-	if key == v.key {
-		return v.value, true
-	}
-	return nil, false
-}
-
-// Set implements node.
-func (v *value) Set(key Key, newValue any) node {
-
-	// Hash collision for different keys
-	if key.hash == v.key.hash && key.key != v.key.key {
-		var c node
-		c = &collision{}
-		c = c.Set(v.key, v.value)
-		c = c.Set(key, newValue)
-		return c
-	}
-
-	if key.key != v.key.key {
-		panic("key mismatch")
-	}
-	return &value{
-		key:   key,
-		value: newValue,
-	}
-}
-
-var _ node = &value{}
-
-type collision struct {
-	values []*value
-}
-
-// Get implements node.
-func (c *collision) Get(key Key) (any, bool) {
-	for _, v := range c.values {
-		if v.key == key {
-			return v.value, true
-		}
-	}
-	return nil, false
-}
-
-// Set implements node.
-func (c *collision) Set(key Key, newValue any) node {
-	newCollision := make([]*value, len(c.values))
-	copy(newCollision, c.values)
-
-	for i, v := range c.values {
-		if v.key == key {
-			newCollision[i] = &value{
-				key:   key,
-				value: newValue,
-			}
-			return &collision{values: newCollision}
-		}
-	}
-	newCollision = append(c.values, &value{
-		key:   key,
-		value: newValue,
-	})
-	return &collision{values: newCollision}
-}
-
-var _ node = &collision{}
 
 type Map struct {
 	root   *bitmasked
@@ -128,12 +49,14 @@ var DefaultMapOptions = MapOptions{
 
 type MapOption func(*MapOptions)
 
+// WithHasher sets the hasher used to hash keys in the map.
 func WithHasher(h func() hash.Hash64) MapOption {
 	return func(o *MapOptions) {
 		o.hasher = h
 	}
 }
 
+// New creates a new map.
 func New(opts ...MapOption) *Map {
 	options := DefaultMapOptions
 	for _, opt := range opts {
@@ -150,6 +73,7 @@ func New(opts ...MapOption) *Map {
 	}
 }
 
+// NewFromItems creates a new map from a list of key-value pairs.
 func NewFromItems(items ...any) *Map {
 	newMap := New()
 	for i := 0; i < len(items); i += 2 {
@@ -165,10 +89,6 @@ func NewFromItems(items ...any) *Map {
 	return newMap
 }
 
-func Copy(in *Map) *Map {
-	return in.Copy()
-}
-
 func (m *Map) hash(key string) uint64 {
 	_, err := m.hasher.Write([]byte(key))
 	if err != nil {
@@ -179,6 +99,7 @@ func (m *Map) hash(key string) uint64 {
 	return sum
 }
 
+// ToMap returns a native Go map with the same structure as the map.
 func (m *Map) ToMap() map[string]any {
 	out := map[string]any{}
 	for _, k := range m.Keys() {
@@ -194,6 +115,7 @@ func (m *Map) ToMap() map[string]any {
 	return out
 }
 
+// Copy returns a deep copy of a map.
 func (m *Map) Copy() *Map {
 	newMap := New()
 	newMap.hasher = m.hasher
@@ -201,6 +123,7 @@ func (m *Map) Copy() *Map {
 	return newMap
 }
 
+// Equals compares two maps recursively and returns true if they are equal.
 func (m *Map) Equals(other *Map) bool {
 	fKeys := m.Keys()
 	otherKeys := other.Keys()
@@ -227,6 +150,12 @@ func castPair[T any](a any, b any) (T, T) {
 	return a.(T), b.(T)
 }
 
+// Diff returns a map with the differences between two maps.
+// The returned map will contain the keys that are not equal in the two maps.
+// The value of the returned map will be the value of the key of the only map that contains it.
+// If the value of a key exists in both maps, the function will compare the values
+// and return the other value if they are different.
+// If the value of a key is a map in both maps, the function will compare the maps recursively.
 func (m *Map) Diff(other *Map) (*Map, error) {
 	diff := New()
 
@@ -278,10 +207,13 @@ func (m *Map) Diff(other *Map) (*Map, error) {
 	return diff, nil
 }
 
+// Get retrieves the value of a key from a map.
+// The key can be a string or a list of strings.
+// If the key is a list of strings, the function will traverse the map recursively folloeing the keys in the list.
 func (m *Map) Get(key any) (any, bool) {
 	switch k := key.(type) {
 	case string:
-		return m.root.Get(NewKey(k, m.hash(k)))
+		return m.root.get(NewKey(k, m.hash(k)))
 	case []string:
 		if len(k) == 0 {
 			return nil, false
@@ -306,6 +238,7 @@ func (m *Map) Get(key any) (any, bool) {
 	}
 }
 
+// GetMap retrieves the value of a key from a map and casts it to a map.
 func (m *Map) GetMap(key string) (*Map, error) {
 	v, ok := m.Get(key)
 	if !ok {
@@ -318,6 +251,7 @@ func (m *Map) GetMap(key string) (*Map, error) {
 	return valueMap, nil
 }
 
+// GetString retrieves the value of a key from a map and casts it to a string.
 func (m *Map) GetString(key string) (string, error) {
 	v, ok := m.Get(key)
 	if !ok {
@@ -335,6 +269,7 @@ func (m *Map) GetString(key string) (string, error) {
 	}
 }
 
+// GetBool retrieves the value of a key from a map and casts it to a bool.
 func (m *Map) GetBool(key string) (bool, error) {
 	v, ok := m.Get(key)
 	if !ok {
@@ -347,6 +282,7 @@ func (m *Map) GetBool(key string) (bool, error) {
 	return valueBool, nil
 }
 
+// GetFloat retrieves the value of a key from a map and casts it to a float64.
 func (m *Map) GetFloat(key string) (float64, error) {
 	v, ok := m.Get(key)
 	if !ok {
@@ -359,6 +295,7 @@ func (m *Map) GetFloat(key string) (float64, error) {
 	return valueFloat, nil
 }
 
+// GetInt retrieves the value of a key from a map and casts it to an int.
 func (m *Map) GetInt(key string) (int, error) {
 	v, ok := m.Get(key)
 	if !ok {
@@ -377,16 +314,20 @@ func (m *Map) GetInt(key string) (int, error) {
 // Set implements node.
 func (m *Map) Set(key string, value any) *Map {
 	h := m.hash(key)
-	m.root = m.root.Set(NewKey(key, h), value).(*bitmasked)
+	m.root = m.root.set(NewKey(key, h), value).(*bitmasked)
 	return m
 }
 
+// Keys returns a list of all keys in the map.
 func (m *Map) Keys() []string {
 	root := m.root
-	keys := root.Keys()
+	keys := root.keys()
 	return keys
 }
 
+// Merge merges two maps.
+// If a key exists in both maps, the value from the other map will be used.
+// If the value of a key is a map in both maps, the maps will be merged recursively.
 func (m *Map) Merge(other *Map) *Map {
 	newMap := m.Copy()
 	for _, k := range other.Keys() {
@@ -413,10 +354,11 @@ func (m *Map) Merge(other *Map) *Map {
 	return newMap
 }
 
+// Delete removes a key from the map and returns a new map without the key.
 func (m *Map) Delete(key string) (*Map, bool) {
 	k := NewKey(key, m.hash(key))
 	var wasDeleted bool
-	m.root, wasDeleted = m.root.Delete(k)
+	m.root, wasDeleted = m.root.delete(k)
 
 	return m, wasDeleted
 }
@@ -454,7 +396,22 @@ func informationPaths(initial []string, f *Map) []string {
 	return result
 }
 
-// InformationPaths returns a list of paths to all leaf nodes in a feature
+// InformationPaths returns a list of paths to all leaf nodes in a map.
+// The format of the paths is a dot-separated string of keys.
+// For example, the following map:
+//
+//	{
+//	    "a": {
+//	        "b": 1,
+//	        "c": {
+//	            "d": 2
+//	        }
+//	    }
+//	}
+//
+// will return the following paths:
+//
+//	["a.b", "a.c.d"]
 func InformationPaths(f *Map) []string {
 	return informationPaths([]string{}, f)
 }

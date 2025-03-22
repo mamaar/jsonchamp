@@ -36,7 +36,7 @@ func (b *bitmasked) index(pos uint64) int {
 	return bits.OnesCount64((b.valueMap | b.subMapsMap) & (pos - 1))
 }
 
-func (b *bitmasked) Keys() []string {
+func (b *bitmasked) keys() []string {
 	keys := make([]string, 0, len(b.values))
 	for _, v := range b.values {
 		switch value := v.(type) {
@@ -47,24 +47,24 @@ func (b *bitmasked) Keys() []string {
 				keys = append(keys, v.key.key)
 			}
 		case *bitmasked:
-			keys = append(keys, value.Keys()...)
+			keys = append(keys, value.keys()...)
 		}
 	}
 	return keys
 }
 
 // Get implements node.
-func (b *bitmasked) Get(key Key) (any, bool) {
+func (b *bitmasked) get(key Key) (any, bool) {
 	pos := bitPosition(key.hash, b.level)
 
 	if b.valueMap&pos != 0 {
 		valueIdx := b.index(pos)
-		return b.values[valueIdx].Get(key)
+		return b.values[valueIdx].get(key)
 	}
 	if b.subMapsMap&pos != 0 {
 		subMapIndex := b.index(pos)
 		subMap := b.values[subMapIndex].(*bitmasked)
-		return subMap.Get(key)
+		return subMap.get(key)
 	}
 
 	return nil, false
@@ -106,7 +106,7 @@ func (b *bitmasked) mergeValueToSubNode(newLevel uint8, keyA Key, valueA any, ke
 	}
 }
 
-func (b *bitmasked) Set(key Key, newValue any) node {
+func (b *bitmasked) set(key Key, newValue any) node {
 	pos := bitPosition(key.hash, b.level)
 
 	valueExists := b.valueMap&pos != 0
@@ -140,7 +140,7 @@ func (b *bitmasked) Set(key Key, newValue any) node {
 			panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, b.values[subNodeIndex]))
 		}
 		newB := b.copy()
-		newB.values[subNodeIndex] = subNode.Set(key, newValue)
+		newB.values[subNodeIndex] = subNode.set(key, newValue)
 		return newB
 	}
 
@@ -181,8 +181,8 @@ func (b *bitmasked) copy() *bitmasked {
 	}
 }
 
-// Delete deletes a key from the map. If the key does not exist, it returns false.
-func (b *bitmasked) Delete(key Key) (*bitmasked, bool) {
+// delete deletes a key from the map. If the key does not exist, it returns false.
+func (b *bitmasked) delete(key Key) (*bitmasked, bool) {
 	if len(b.values) == 0 {
 		return b, false
 	}
@@ -206,7 +206,7 @@ func (b *bitmasked) Delete(key Key) (*bitmasked, bool) {
 			panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, b.values[subNodeIndex]))
 		}
 		subNodeCopy := subNode.copy()
-		subNodeCopy, ok = subNodeCopy.Delete(key)
+		subNodeCopy, ok = subNodeCopy.delete(key)
 
 		// The last key in the subnode was deleted, so we remove the subnode.
 		if len(subNodeCopy.values) == 0 {

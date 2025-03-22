@@ -31,14 +31,14 @@ func TestValueGet(t *testing.T) {
 
 	for _, tt := range tests {
 		v := tt.setup()
-		got, ok := v.Get(NewKey("key", tt.key))
+		got, ok := v.get(NewKey("key", tt.key))
 
 		if ok != tt.expectedOk {
-			t.Errorf("Get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
+			t.Errorf("get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
 		}
 
 		if tt.expectedOk && got != tt.expectedValue {
-			t.Errorf("Get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
+			t.Errorf("get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
 		}
 
 	}
@@ -47,26 +47,26 @@ func TestValueGet(t *testing.T) {
 func TestValueSet(t *testing.T) {
 
 	var v node = &value{key: NewKey("key", 1<<63), value: "hello"}
-	v = v.Set(NewKey("key", 1<<63), "world")
+	v = v.set(NewKey("key", 1<<63), "world")
 
-	world, ok := v.Get(NewKey("key", 1<<63))
+	world, ok := v.get(NewKey("key", 1<<63))
 	if !ok {
-		t.Errorf("Get(1) = %v; want %v", ok, true)
+		t.Errorf("get(1) = %v; want %v", ok, true)
 	}
 
 	if world != "world" {
-		t.Errorf("Get(1) = %v; want %v", world, "world")
+		t.Errorf("get(1) = %v; want %v", world, "world")
 	}
 }
 
 func TestValueSetWithCollision(t *testing.T) {
 	v := &value{key: NewKey("key", 1)}
 
-	n := v.Set(NewKey("something", 1), "hello")
+	n := v.set(NewKey("something", 1), "hello")
 
 	_, isCollision := n.(*collision)
 	if !isCollision {
-		t.Errorf("Set(1) = %v; want %v", isCollision, true)
+		t.Errorf("set(1) = %v; want %v", isCollision, true)
 	}
 }
 
@@ -107,14 +107,14 @@ func TestCollisionGet(t *testing.T) {
 
 	for _, tt := range tests {
 		c := tt.setuo()
-		got, ok := c.Get(NewKey("key", tt.key))
+		got, ok := c.get(NewKey("key", tt.key))
 
 		if ok != tt.expectedOk {
-			t.Errorf("Get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
+			t.Errorf("get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
 		}
 
 		if tt.expectedOk && got != tt.expectedValue {
-			t.Errorf("Get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
+			t.Errorf("get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
 		}
 
 	}
@@ -124,31 +124,31 @@ func TestCollisionSet(t *testing.T) {
 	var c node
 	c = &collision{values: []*value{{key: NewKey("key_1", 1), value: "hello"}}}
 
-	c = c.Set(NewKey("key_2", 1), "world")
+	c = c.set(NewKey("key_2", 1), "world")
 
 	if len(c.(*collision).values) != 2 {
-		t.Errorf("Set(2) = %v; want %v", len(c.(*collision).values), 2)
+		t.Errorf("set(2) = %v; want %v", len(c.(*collision).values), 2)
 	}
 
-	c = c.Set(NewKey("key_1", 1), "world")
+	c = c.set(NewKey("key_1", 1), "world")
 	if len(c.(*collision).values) != 2 {
-		t.Errorf("Set(1) = %v; want %v", len(c.(*collision).values), 2)
+		t.Errorf("set(1) = %v; want %v", len(c.(*collision).values), 2)
 	}
 
-	v, ok := c.Get(NewKey("key_1", 1))
+	v, ok := c.get(NewKey("key_1", 1))
 	if !ok {
-		t.Errorf("Get(1) = %v; want %v", ok, true)
+		t.Errorf("get(1) = %v; want %v", ok, true)
 	}
 	if v != "world" {
-		t.Errorf("Get(1) = %v; want %v", v, "world")
+		t.Errorf("get(1) = %v; want %v", v, "world")
 	}
 
-	v2, ok := c.Get(NewKey("key_2", 1))
+	v2, ok := c.get(NewKey("key_2", 1))
 	if !ok {
-		t.Errorf("Get(2) = %v; want %v", ok, true)
+		t.Errorf("get(2) = %v; want %v", ok, true)
 	}
 	if v2 != "world" {
-		t.Errorf("Get(2) = %v; want %v", v2, "world")
+		t.Errorf("get(2) = %v; want %v", v2, "world")
 	}
 }
 
@@ -216,14 +216,14 @@ func TestBitmapGet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := tt.setuo()
-			got, ok := b.Get(tt.key)
+			got, ok := b.get(tt.key)
 
 			if ok != tt.expectedOk {
-				t.Errorf("Get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
+				t.Errorf("get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
 			}
 
 			if tt.expectedOk && got != tt.expectedValue {
-				t.Errorf("Get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
+				t.Errorf("get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
 			}
 		})
 
@@ -234,13 +234,13 @@ func TestBitmapSet(t *testing.T) {
 	var c node
 	c = &bitmasked{values: []node{}}
 
-	c = c.Set(NewKey("key_1", 1<<63), "hello")
+	c = c.set(NewKey("key_1", 1<<63), "hello")
 	if len(c.(*bitmasked).values) != 1 {
-		t.Fatalf("Set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
+		t.Fatalf("set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
 	}
 
-	if _, ok := c.Get(NewKey("key_1", 1<<63)); !ok {
-		t.Fatalf("Get(1) = %v; want %v", ok, true)
+	if _, ok := c.get(NewKey("key_1", 1<<63)); !ok {
+		t.Fatalf("get(1) = %v; want %v", ok, true)
 	}
 }
 
@@ -248,19 +248,19 @@ func TestBitmapSetWithCollision(t *testing.T) {
 	var c node
 	c = &bitmasked{values: []node{}}
 
-	c = c.Set(NewKey("key_1", 1<<63), "hello")
-	c = c.Set(NewKey("key_2", 1<<63|1<<47), "world")
+	c = c.set(NewKey("key_1", 1<<63), "hello")
+	c = c.set(NewKey("key_2", 1<<63|1<<47), "world")
 
 	if len(c.(*bitmasked).values) != 1 {
-		t.Fatalf("Set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
+		t.Fatalf("set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
 	}
 
-	if _, ok := c.Get(NewKey("key_1", 1<<63)); !ok {
-		t.Fatalf("Get(1) = %v; want %v", ok, true)
+	if _, ok := c.get(NewKey("key_1", 1<<63)); !ok {
+		t.Fatalf("get(1) = %v; want %v", ok, true)
 	}
 
-	if _, ok := c.Get(NewKey("key_2", 1<<63|1<<47)); !ok {
-		t.Fatalf("Get(2) = %v; want %v", ok, true)
+	if _, ok := c.get(NewKey("key_2", 1<<63|1<<47)); !ok {
+		t.Fatalf("get(2) = %v; want %v", ok, true)
 	}
 }
 
@@ -401,7 +401,7 @@ func TestDelete(t *testing.T) {
 			m, _ = m.Delete(testCase.key)
 
 			if !m.Equals(testCase.expectedMap) {
-				t.Errorf("Delete(%s) = %v; want %v", testCase.key, m, testCase.expectedMap)
+				t.Errorf("delete(%s) = %v; want %v", testCase.key, m, testCase.expectedMap)
 			}
 		})
 	}
