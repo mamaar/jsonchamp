@@ -1,360 +1,669 @@
 package maps
 
-import "testing"
+import (
+	"errors"
+	"reflect"
+	"testing"
+)
 
-func TestValueGet(t *testing.T) {
-	tests := []struct {
-		setup func() *value
+func TestMapSet(t *testing.T) {
 
-		key uint64
+	f := New()
 
-		expectedValue any
-		expectedOk    bool
-	}{
-		{
-			setup: func() *value {
-				return &value{key: NewKey("key", 1), value: "hello"}
-			},
-			key:           1,
-			expectedOk:    true,
-			expectedValue: "hello",
-		},
-		{
-			setup: func() *value {
-				return &value{key: NewKey("key", 1), value: "world"}
-			},
-			key:           2,
-			expectedOk:    false,
-			expectedValue: nil,
-		},
+	fWithName := f.Set("name", "John")
+
+	expected := NewFromItems("name", "John")
+
+	isEqual := fWithName.Equals(expected)
+
+	if !isEqual {
+		t.Fatalf("have %v, want %v", fWithName, expected)
 	}
 
-	for _, tt := range tests {
-		v := tt.setup()
-		got, ok := v.get(NewKey("key", tt.key))
-
-		if ok != tt.expectedOk {
-			t.Errorf("get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
-		}
-
-		if tt.expectedOk && got != tt.expectedValue {
-			t.Errorf("get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
-		}
-
-	}
 }
 
-func TestValueSet(t *testing.T) {
-
-	var v node = &value{key: NewKey("key", 1<<63), value: "hello"}
-	v = v.set(NewKey("key", 1<<63), "world")
-
-	world, ok := v.get(NewKey("key", 1<<63))
-	if !ok {
-		t.Errorf("get(1) = %v; want %v", ok, true)
+func TestMapEquals(t *testing.T) {
+	type args struct {
+		f     *Map
+		other *Map
 	}
-
-	if world != "world" {
-		t.Errorf("get(1) = %v; want %v", world, "world")
-	}
-}
-
-func TestValueSetWithCollision(t *testing.T) {
-	v := &value{key: NewKey("key", 1)}
-
-	n := v.set(NewKey("something", 1), "hello")
-
-	_, isCollision := n.(*collision)
-	if !isCollision {
-		t.Errorf("set(1) = %v; want %v", isCollision, true)
-	}
-}
-
-func TestCollisionGet(t *testing.T) {
-	tests := []struct {
-		setuo func() *collision
-
-		key uint64
-
-		expectedValue any
-		expectedOk    bool
-	}{
-		{
-			setuo: func() *collision {
-				return &collision{values: []*value{{key: NewKey("key", 1), value: "hello"}}}
-			},
-			key:           1,
-			expectedOk:    true,
-			expectedValue: "hello",
-		},
-		{
-			setuo: func() *collision {
-				return &collision{values: []*value{{key: NewKey("key", 1), value: "world"}}}
-			},
-			key:           2,
-			expectedOk:    false,
-			expectedValue: nil,
-		},
-		{
-			setuo: func() *collision {
-				return &collision{values: []*value{{key: NewKey("key", 1), value: "hello"}, {key: NewKey("key", 2), value: "world"}}}
-			},
-			key:           2,
-			expectedOk:    true,
-			expectedValue: "world",
-		},
-	}
-
-	for _, tt := range tests {
-		c := tt.setuo()
-		got, ok := c.get(NewKey("key", tt.key))
-
-		if ok != tt.expectedOk {
-			t.Errorf("get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
-		}
-
-		if tt.expectedOk && got != tt.expectedValue {
-			t.Errorf("get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
-		}
-
-	}
-}
-
-func TestCollisionSet(t *testing.T) {
-	var c node
-	c = &collision{values: []*value{{key: NewKey("key_1", 1), value: "hello"}}}
-
-	c = c.set(NewKey("key_2", 1), "world")
-
-	if len(c.(*collision).values) != 2 {
-		t.Errorf("set(2) = %v; want %v", len(c.(*collision).values), 2)
-	}
-
-	c = c.set(NewKey("key_1", 1), "world")
-	if len(c.(*collision).values) != 2 {
-		t.Errorf("set(1) = %v; want %v", len(c.(*collision).values), 2)
-	}
-
-	v, ok := c.get(NewKey("key_1", 1))
-	if !ok {
-		t.Errorf("get(1) = %v; want %v", ok, true)
-	}
-	if v != "world" {
-		t.Errorf("get(1) = %v; want %v", v, "world")
-	}
-
-	v2, ok := c.get(NewKey("key_2", 1))
-	if !ok {
-		t.Errorf("get(2) = %v; want %v", ok, true)
-	}
-	if v2 != "world" {
-		t.Errorf("get(2) = %v; want %v", v2, "world")
-	}
-}
-
-func TestBitmapGet(t *testing.T) {
 	tests := []struct {
 		name string
-
-		setuo func() *bitmasked
-
-		key Key
-
-		expectedValue any
-		expectedOk    bool
+		args args
+		want bool
 	}{
 		{
-			name: "empty",
-			setuo: func() *bitmasked {
-				return &bitmasked{
-					valueMap: 0b0000_0000_0000_0000,
-					values:   []node{&value{key: NewKey("key", 1), value: "hello"}},
-				}
+			name: "two empty features are equal",
+			args: args{
+				f:     New(),
+				other: New(),
 			},
-			key:           NewKey("key", 1<<10),
-			expectedOk:    false,
-			expectedValue: nil,
+			want: true,
 		},
 		{
-			name: "not found",
-			setuo: func() *bitmasked {
-				return &bitmasked{
-					valueMap: 0b0000_0001,
-					values:   []node{&value{key: NewKey("key", 1), value: "world"}},
-				}
+			name: "two features with equal string values are equal",
+			args: args{
+				f:     NewFromItems("a", "1"),
+				other: NewFromItems("a", "1"),
 			},
-			key:           NewKey("key", 2),
-			expectedOk:    false,
-			expectedValue: nil,
+			want: true,
 		},
 		{
-			name: "value found",
-			setuo: func() *bitmasked {
-				return &bitmasked{
-					valueMap: 0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
-					values:   []node{&value{key: NewKey("key", 1<<63), value: "hello"}},
-				}
+			name: "two features with different string values are not equal",
+			args: args{
+				f:     NewFromItems("a", "1"),
+				other: NewFromItems("a", "2"),
 			},
-			key:           NewKey("key", 1<<63),
-			expectedOk:    true,
-			expectedValue: "hello",
+			want: false,
 		},
 		{
-			name: "collision on one section",
-			setuo: func() *bitmasked {
-				return &bitmasked{
-					valueMap: 0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
-					values:   []node{&collision{values: []*value{{key: NewKey("key_1", 1<<63), value: "hello"}, {key: NewKey("key_2", 1<<63), value: "world"}}}},
-				}
+			name: "two features with equal int values are equal",
+			args: args{
+				f:     NewFromItems("a", 1),
+				other: NewFromItems("a", 1),
 			},
-			key:           Key{key: "key_1", hash: 1 << 63},
-			expectedOk:    true,
-			expectedValue: "hello",
+			want: true,
+		},
+		{
+			name: "two features with different int values are not equal",
+			args: args{
+				f:     NewFromItems("a", 1),
+				other: NewFromItems("a", 2),
+			},
+			want: false,
+		},
+		{
+			name: "two features with different keys are not equal",
+			args: args{
+				f:     NewFromItems("a", 1),
+				other: NewFromItems("b", 1),
+			},
+			want: false,
+		},
+		{
+			name: "two features with different number of keys are not equal",
+			args: args{
+				f:     NewFromItems("a", 1),
+				other: NewFromItems("a", 1, "b", 2),
+			},
+			want: false,
+		},
+		{
+			name: "two features with different types are not equal",
+			args: args{
+				f:     NewFromItems("a", 1),
+				other: NewFromItems("a", "1"),
+			},
+			want: false,
+		},
+		{
+			name: "two features with equal int32 values are equal",
+			args: args{
+				f:     NewFromItems("a", int32(1)),
+				other: NewFromItems("a", int32(1)),
+			},
+			want: true,
+		},
+		{
+			name: "two features with different int32 values are not equal",
+			args: args{
+				f:     NewFromItems("a", int32(1)),
+				other: NewFromItems("a", int32(2)),
+			},
+			want: false,
+		},
+		{
+			name: "two features with equal int64 values are equal",
+			args: args{
+				f:     NewFromItems("a", int64(1)),
+				other: NewFromItems("a", int64(1)),
+			},
+			want: true,
+		},
+		{
+			name: "two features with different int64 values are not equal",
+			args: args{
+				f:     NewFromItems("a", int64(1)),
+				other: NewFromItems("a", int64(2)),
+			},
+			want: false,
+		},
+		{
+			name: "many fields in different order are equal",
+			args: args{
+				f:     NewFromItems("a", 1, "b", 2, "c", 3, "d", 4, "e", 5),
+				other: NewFromItems("e", 5, "d", 4, "c", 3, "b", 2, "a", 1),
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.args.f.Equals(tt.args.other); got != tt.want {
+				diff, _ := tt.args.f.Diff(tt.args.other)
+				t.Errorf("Equals() = %v, want %v", got, tt.want)
+				t.Errorf("Diff() = %v", diff)
+			}
+		})
+	}
+}
+
+func TestNewFromItems(t *testing.T) {
+	tests := []struct {
+		name    string
+		items   []any
+		want    *Map
+		wantErr error
+	}{
+		{
+			name:    "empty items creates an empty feature",
+			items:   []any{},
+			want:    New(),
+			wantErr: nil,
+		},
+		{
+			name:    "valid items creates a feature",
+			items:   []any{"a", 1, "b", 2},
+			want:    NewFromItems("a", 1, "b", 2),
+			wantErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fromItems := NewFromItems(tt.items...)
+			if !fromItems.Equals(tt.want) {
+				t.Errorf("got %v, want %v", fromItems, tt.want)
+			}
+		})
+	}
+}
+
+func TestDiff(t *testing.T) {
+	type args struct {
+		one   *Map
+		other *Map
+	}
+	tests := []struct {
+		name            string
+		args            args
+		expectedHasDiff bool
+		wantDiff        *Map
+	}{
+		{
+			name: "two empty features are equal",
+			args: args{
+				one:   New(),
+				other: New(),
+			},
+			expectedHasDiff: false,
+			wantDiff:        New(),
+		},
+		{
+			name: "two features with equal values are equal",
+			args: args{
+				one:   NewFromItems("a", 1),
+				other: NewFromItems("a", 1),
+			},
+			expectedHasDiff: false,
+			wantDiff:        New(),
+		},
+		{
+			name: "one feature has extra key",
+			args: args{
+				one:   NewFromItems("a", 1),
+				other: NewFromItems("a", 1, "b", 2),
+			},
+			expectedHasDiff: true,
+			wantDiff:        NewFromItems("b", 2),
+		},
+		{
+			name: "nested features are equal",
+			args: args{
+				one:   NewFromItems("a", NewFromItems("b", 1)),
+				other: NewFromItems("a", NewFromItems("b", 1)),
+			},
+			expectedHasDiff: false,
+			wantDiff:        New(),
+		},
+		{
+			name: "nested features are not equal",
+			args: args{
+				one:   NewFromItems("a", NewFromItems("b", 1)),
+				other: NewFromItems("a", NewFromItems("b", 2)),
+			},
+			expectedHasDiff: true,
+			wantDiff:        NewFromItems("a", NewFromItems("b", 2)),
+		},
+		{
+			name: "empty feature and feature with key are not equal",
+			args: args{
+				one:   New(),
+				other: NewFromItems("a", 1),
+			},
+			expectedHasDiff: true,
+			wantDiff:        NewFromItems("a", 1),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			one := tt.args.one
+			other := tt.args.other
+
+			diff, err := one.Diff(other)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if tt.expectedHasDiff && !diff.Equals(tt.wantDiff) {
+				t.Errorf("expected equality: %v", tt.expectedHasDiff)
+			}
+			if !diff.Equals(tt.wantDiff) {
+				t.Errorf("expected diff: %v, got: %v", tt.wantDiff, diff)
+			}
+		})
+	}
+}
+
+func TestDiffSlice(t *testing.T) {
+	type args struct {
+		one   []any
+		other []any
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantDiff bool
+	}{
+		{
+			name: "two empty slices are equal",
+			args: args{
+				one:   []any{},
+				other: []any{},
+			},
+			wantDiff: false,
+		},
+		{
+			name: "two slices with equal values are equal",
+			args: args{
+				one:   []any{1},
+				other: []any{1},
+			},
+			wantDiff: false,
+		},
+		{
+			name: "two slices with different values are not equal",
+			args: args{
+				one:   []any{1},
+				other: []any{2},
+			},
+			wantDiff: true,
+		},
+		{
+			name: "nested slices with equal values are equal",
+			args: args{
+				one:   []any{[]any{1}},
+				other: []any{[]any{1}},
+			},
+			wantDiff: false,
+		},
+		{
+			name: "nested slices with different values are not equal",
+			args: args{
+				one:   []any{[]any{1}},
+				other: []any{[]any{2}},
+			},
+			wantDiff: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, hasDiff := DiffSlice(tt.args.one, tt.args.other)
+			if hasDiff != tt.wantDiff {
+				t.Errorf("expected diff: %v, got: %v", tt.wantDiff, hasDiff)
+			}
+		})
+	}
+}
+
+func TestDiffMapNoNested(t *testing.T) {
+	tests := []struct {
+		name          string
+		first         *Map
+		second        *Map
+		diff          *Map
+		expectedError error
+	}{
+		{
+			name:          "value change",
+			first:         NewFromItems("a", 1),
+			second:        NewFromItems("a", 2),
+			diff:          NewFromItems("a", 2),
+			expectedError: nil,
+		},
+		{
+			name:          "new key",
+			first:         NewFromItems("a", 1),
+			second:        NewFromItems("a", 1, "b", 2),
+			diff:          NewFromItems("b", 2),
+			expectedError: nil,
+		},
+		{
+			name:          "key removed",
+			first:         NewFromItems("a", 1, "b", 2),
+			second:        NewFromItems("a", 1),
+			diff:          NewFromItems("b", nil),
+			expectedError: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := tt.setuo()
-			got, ok := b.get(tt.key)
-
-			if ok != tt.expectedOk {
-				t.Errorf("get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
+			diff, err := tt.first.Diff(tt.second)
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf("expected error: %v, got: %v", tt.expectedError, err)
 			}
-
-			if tt.expectedOk && got != tt.expectedValue {
-				t.Errorf("get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
+			if tt.expectedError != nil {
+				return
+			}
+			if !diff.Equals(tt.diff) {
+				t.Fatalf("expected diff: %v, got: %v", tt.diff, diff)
+			}
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf("expected error: %v, got: %v", tt.expectedError, err)
 			}
 		})
-
 	}
 }
 
-func TestBitmapSet(t *testing.T) {
-	var c node
-	c = &bitmasked{values: []node{}}
-
-	c = c.set(NewKey("key_1", 1<<63), "hello")
-	if len(c.(*bitmasked).values) != 1 {
-		t.Fatalf("set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
-	}
-
-	if _, ok := c.get(NewKey("key_1", 1<<63)); !ok {
-		t.Fatalf("get(1) = %v; want %v", ok, true)
-	}
-}
-
-func TestBitmapSetWithCollision(t *testing.T) {
-	var c node
-	c = &bitmasked{values: []node{}}
-
-	c = c.set(NewKey("key_1", 1<<63), "hello")
-	c = c.set(NewKey("key_2", 1<<63|1<<47), "world")
-
-	if len(c.(*bitmasked).values) != 1 {
-		t.Fatalf("set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
-	}
-
-	if _, ok := c.get(NewKey("key_1", 1<<63)); !ok {
-		t.Fatalf("get(1) = %v; want %v", ok, true)
-	}
-
-	if _, ok := c.get(NewKey("key_2", 1<<63|1<<47)); !ok {
-		t.Fatalf("get(2) = %v; want %v", ok, true)
-	}
-}
-
-func TestPartition(t *testing.T) {
+func TestDiffMapNested(t *testing.T) {
 	tests := []struct {
-		hash  uint64
-		level uint8
-		want  uint64
+		name          string
+		first         *Map
+		second        *Map
+		diff          *Map
+		expectedError error
 	}{
 		{
-			hash:  1 << 63,
-			level: 0,
-			want:  0b00100000,
+			name:          "value change",
+			first:         NewFromItems("a", NewFromItems("b", 1)),
+			second:        NewFromItems("a", NewFromItems("b", 2)),
+			diff:          NewFromItems("a", NewFromItems("b", 2)),
+			expectedError: nil,
 		},
 		{
-			hash:  1 << 57,
-			level: 1,
-			want:  0b00100000,
+			name:          "new key",
+			first:         NewFromItems("a", NewFromItems("b", 1)),
+			second:        NewFromItems("a", NewFromItems("b", 1, "c", 2)),
+			diff:          NewFromItems("a", NewFromItems("c", 2)),
+			expectedError: nil,
 		},
 		{
-			hash:  0b0001_0000,
-			level: 10,
-			want:  0b0000_0000,
-		},
-		{
-			hash:  4,
-			level: 10,
-			want:  0b0000_0100,
+			name:          "key removed",
+			first:         NewFromItems("a", NewFromItems("b", 1, "c", 2)),
+			second:        NewFromItems("a", NewFromItems("b", 1)),
+			diff:          NewFromItems("a", NewFromItems("c", nil)),
+			expectedError: nil,
 		},
 	}
 
 	for _, tt := range tests {
-		got := partition(tt.hash, tt.level)
-		if got != tt.want {
-			t.Errorf("partition(%064b, %d) = %064b; want %064b", tt.hash, tt.level, got, tt.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			diff, err := tt.first.Diff(tt.second)
+
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf("expected error: %v, got: %v", tt.expectedError, err)
+			}
+			if tt.expectedError != nil {
+				return
+			}
+			if !diff.Equals(tt.diff) {
+				t.Errorf("expected diff: %v, got: %v", tt.diff, diff)
+			}
+			if !errors.Is(err, tt.expectedError) {
+				t.Errorf("expected error: %v, got: %v", tt.expectedError, err)
+			}
+		})
 	}
 }
-func TestPartitionMask(t *testing.T) {
+
+func TestIntersection(t *testing.T) {
+	type args struct {
+		one   []string
+		other []string
+	}
 	tests := []struct {
-		level uint8
-		want  uint64
+		name string
+		args args
+		want []string
 	}{
 		{
-			level: 0,
-			want:  0b11111100_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+			name: "two empty slices have no intersection",
+			args: args{
+				one:   []string{},
+				other: []string{},
+			},
+			want: []string{},
 		},
 		{
-			level: 1,
-			want:  0b00000011_11110000_00000000_00000000_00000000_00000000_00000000_00000000,
+			name: "two slices with equal values have intersection",
+			args: args{
+				one:   []string{"a"},
+				other: []string{"a"},
+			},
+			want: []string{"a"},
 		},
 		{
-			level: 2,
-			want:  0b00000000_00001111_11000000_00000000_00000000_00000000_00000000_00000000,
-		},
-		{
-			level: 3,
-			want:  0b00000000_00000000_00111111_00000000_00000000_00000000_00000000_00000000,
-		},
-		{
-			level: 4,
-			want:  0b00000000_00000000_00000000_11111100_00000000_00000000_00000000_00000000,
-		},
-		{
-			level: 5,
-			want:  0b00000000_00000000_00000000_00000011_11110000_00000000_00000000_00000000,
-		},
-		{
-			level: 6,
-			want:  0b00000000_00000000_00000000_00000000_00001111_11000000_00000000_00000000,
-		},
-		{
-			level: 7,
-			want:  0b00000000_00000000_00000000_00000000_00000000_00111111_00000000_00000000,
-		},
-		{
-			level: 8,
-			want:  0b00000000_00000000_00000000_00000000_00000000_00000000_11111100_00000000,
-		},
-		{
-			level: 9,
-			want:  0b00000000_00000000_00000000_00000000_00000000_00000000_00000011_11110000,
-		},
-		{
-			level: 10,
-			want:  0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001111,
+			name: "two slices with different values have no intersection",
+			args: args{
+				one:   []string{"a"},
+				other: []string{"b"},
+			},
+			want: []string{},
 		},
 	}
-
 	for _, tt := range tests {
-		got := partitionMask(tt.level)
-		if got != tt.want {
-			t.Errorf("partitionMask(%d) = %064b; want %064b", tt.level, got, tt.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			got := Intersection(tt.args.one, tt.args.other)
+			if len(got) != len(tt.want) {
+				t.Fatalf("have %v, want %v", got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf("have %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestMerge(t *testing.T) {
+	type args struct {
+		current *Map
+		diff    *Map
+	}
+	tests := []struct {
+		name string
+		args args
+		want *Map
+	}{
+		{
+			name: "empty diff",
+			args: args{
+				current: New(),
+				diff:    New(),
+			},
+			want: New(),
+		},
+		{
+			name: "empty current, simple scalar diff",
+			args: args{
+				current: New(),
+				diff:    NewFromItems("a", 1),
+			},
+			want: NewFromItems("a", 1),
+		},
+		{
+			name: "empty current, simple nested diff",
+			args: args{
+				current: New(),
+				diff:    NewFromItems("a", NewFromItems("b", 1)),
+			},
+			want: NewFromItems("a", NewFromItems("b", 1)),
+		},
+		{
+			name: "nested current, nested diff without conflict",
+			args: args{
+				current: NewFromItems("a", NewFromItems("b", 1)),
+				diff:    NewFromItems("a", NewFromItems("c", 2)),
+			},
+			want: NewFromItems("a", NewFromItems("b", 1, "c", 2)),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.args.current.Merge(tt.args.diff)
+			if !got.Equals(tt.want) {
+				t.Errorf("Merge() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHavePathInCommon(t *testing.T) {
+	type args struct {
+		a *Map
+		b *Map
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "two empty features have no path in common",
+			args: args{
+				a: New(),
+				b: New(),
+			},
+			want: false,
+		},
+		{
+			name: "two features with equal values have path in common",
+			args: args{
+				a: NewFromItems("a", 1),
+				b: NewFromItems("a", 1),
+			},
+			want: true,
+		},
+		{
+			name: "two features with different values have path in common",
+			args: args{
+				a: NewFromItems("a", 1),
+				b: NewFromItems("a", 2),
+			},
+			want: true,
+		},
+		{
+			name: "two features with nested features have path in common",
+			args: args{
+				a: NewFromItems("a", NewFromItems("b", 1)),
+				b: NewFromItems("a", NewFromItems("b", 2)),
+			},
+			want: true,
+		},
+		{
+			name: "two features with nested features have no path in common",
+			args: args{
+				a: NewFromItems("a", NewFromItems("b", 1)),
+				b: NewFromItems("a", NewFromItems("c", 2)),
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := HavePathInCommon(tt.args.a, tt.args.b); got != tt.want {
+				t.Errorf("HavePathInCommon() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInformationPaths(t *testing.T) {
+	f := NewFromItems("a", 1, "b", NewFromItems("c", 2))
+	paths := InformationPaths(f)
+	expected := []string{"a", "b.c"}
+
+	if _, hasDiff := DiffSlice(paths, expected); hasDiff {
+		t.Fatalf("have %v, want %v", paths, expected)
+	}
+}
+
+func TestRefToLookup(t *testing.T) {
+	type args struct {
+		ref *Map
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "empty ref",
+			args: args{
+				ref: New(),
+			},
+			want: []string{},
+		},
+		{
+			name: "simple ref",
+			args: args{
+				ref: NewFromItems("$ref", "#/property"),
+			},
+			want: []string{"property"},
+		},
+		{
+			name: "nested ref",
+			args: args{
+				ref: NewFromItems("$ref", "#/property/nested"),
+			},
+			want: []string{"property", "nested"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RefToLookup(tt.args.ref); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RefToLookup() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGet(t *testing.T) {
+	tests := []struct {
+		name     string
+		f        *Map
+		key      any
+		expected any
+	}{
+		{
+			name:     "simple key",
+			f:        NewFromItems("a", 1),
+			key:      "a",
+			expected: 1,
+		},
+		{
+			name:     "nested key with string slice key",
+			f:        NewFromItems("a", NewFromItems("b", 1)),
+			key:      []string{"a", "b"},
+			expected: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, ok := tt.f.Get(tt.key); !ok || !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("get() = %v, want %v", got, tt.expected)
+			}
+		})
 	}
 }
 
