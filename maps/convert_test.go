@@ -37,3 +37,47 @@ func TestConvertToStruct(t *testing.T) {
 
 	t.Logf("m: %v", newOut.ToMap())
 }
+
+func Test_bestEffortJsonName(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"empty", "", ""},
+		{"single", "A", "a"},
+		{"two", "AB", "a_b"},
+		{"three", "ABC", "a_b_c"},
+		{"words", "HelloWorld", "hello_world"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := bestEffortJsonName(tt.in); got != tt.want {
+				t.Errorf("bestEffortJsonName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestToStruct(t *testing.T) {
+	m := NewFromItems("a", 1, "b", 2, "c", 3)
+	type testStruct struct {
+		A int
+		B int
+		S int `champ:"c"`
+	}
+	s, err := ToStruct[testStruct](m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if s.A != 1 {
+		t.Errorf("expected 1, got %d", s.A)
+	}
+	if s.B != 2 {
+		t.Errorf("expected 2, got %d", s.B)
+	}
+	if s.S != 3 {
+		t.Errorf("expected 3, got %d", s.S)
+	}
+}
