@@ -73,6 +73,12 @@ func ToStruct[T any](m *Map) (T, error) {
 		if !ok {
 			continue
 		}
+
+		// If the map value is nil, we set the field to the zero value of the field type.
+		if mapVal == nil {
+			mapVal = reflect.Zero(fieldType.Type).Interface()
+		}
+			
 		fieldValue := structValue.Field(i)
 		fieldValue.Set(reflect.ValueOf(mapVal))
 	}

@@ -81,3 +81,18 @@ func TestToStruct(t *testing.T) {
 		t.Errorf("expected 3, got %d", s.S)
 	}
 }
+
+func TestToStructWithMoreCoverage(t *testing.T) {
+	m := NewFromItems("a", nil)
+
+	type testStruct struct {
+		A string `champ:"a"`
+	}
+
+	s, err := ToStruct[testStruct](m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("m: %v", s)
+}
