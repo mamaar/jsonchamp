@@ -52,13 +52,16 @@ func bestEffortJsonName(n string) string {
 	return snakeCased
 }
 
-func ToStruct[T any](m *Map) (T, error) {
-	var f T
+func ToStruct(m *Map, out any) error {
+	structValue := reflect.ValueOf(out).Elem()
 
-	structType := reflect.TypeOf(f)
-	structValue := reflect.ValueOf(&f).Elem()
+	if structValue.Kind() == reflect.Ptr {
+		structValue = structValue.Elem()
+	}
+
+	structType := structValue.Type()
 	if structType.Kind() != reflect.Struct {
-		return f, fmt.Errorf("expected struct, got %v", structType.Kind())
+		return fmt.Errorf("expected struct, got %v", structType.Kind())
 	}
 
 	numFields := structValue.NumField()
@@ -78,10 +81,56 @@ func ToStruct[T any](m *Map) (T, error) {
 		if mapVal == nil {
 			mapVal = reflect.Zero(fieldType.Type).Interface()
 		}
-			
-		fieldValue := structValue.Field(i)
-		fieldValue.Set(reflect.ValueOf(mapVal))
+
+		switch fieldType.Type.Kind() {
+		case reflect.Int:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(int(0))))
+		case reflect.Int8:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(int8(0))))
+		case reflect.Int16:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(int16(0))))
+		case reflect.Int32:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(int32(0))))
+		case reflect.Int64:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(int64(0))))
+		case reflect.Uint:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(uint(0))))
+		case reflect.Uint8:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(uint8(0))))
+		case reflect.Uint16:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(uint16(0))))
+		case reflect.Uint32:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(uint32(0))))
+		case reflect.Uint64:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(uint64(0))))
+		case reflect.Float32:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(float32(0))))
+		case reflect.Float64:
+			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(float64(0))))
+		case reflect.String:
+			structValue.Field(i).SetString(mapVal.(string))
+		case reflect.Struct:
+			err := ToStruct(mapVal.(*Map), structValue.Field(i).Addr().Interface())
+			if err != nil {
+				return fmt.Errorf("failed to convert map to struct: %w", err)
+			}
+		case reflect.Bool:
+			structValue.Field(i).SetBool(mapVal.(bool))
+		case reflect.Slice:
+			slice := reflect.ValueOf(mapVal)
+			if slice.Len() == 0 {
+				structValue.Field(i).Set(reflect.Zero(fieldType.Type))
+				continue
+			}
+			structValue.Field(i).Set(reflect.ValueOf(mapVal))
+		case reflect.Map:
+			return fmt.Errorf("map fields are not supported. use a struct instead")
+		case reflect.Ptr:
+			return fmt.Errorf("pointer fields are not supported")
+		default:
+			return fmt.Errorf("unsupported type: %v", fieldType.Type.Kind())
+		}
 	}
 
-	return f, nil
+	return nil
 }
