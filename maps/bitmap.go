@@ -6,7 +6,10 @@ import (
 )
 
 const (
-	MaskLevel0 = (0b11111100 << 56)
+	BitPartitionSize = 6
+	MaskLevel0       = 0b11111100 << 56
+
+	maxTreeDepth = 10
 )
 
 func bitPosition(hash uint64, level uint8) uint64 {
@@ -18,7 +21,9 @@ func partitionMask(level uint8) uint64 {
 }
 
 func partition(hash uint64, level uint8) uint64 {
-	if level == 10 {
+	// At the max level, we only need the last 4 bits.
+	// Because that's what's left after the previous levels.
+	if level == maxTreeDepth {
 		return hash & 0b0000_1111
 	}
 	startBit := 64 - (level+1)*BitPartitionSize
@@ -71,7 +76,7 @@ func (b *bitmasked) get(key Key) (any, bool) {
 }
 
 func (b *bitmasked) mergeValueToSubNode(newLevel uint8, keyA Key, valueA any, keyB Key, valueB any) node {
-	if b.level >= 10 {
+	if b.level >= maxTreeDepth {
 		panic("Max level reached")
 	}
 	posA := bitPosition(keyA.hash, newLevel)

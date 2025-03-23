@@ -30,10 +30,6 @@ type KeyValue struct {
 	Value any
 }
 
-const (
-	BitPartitionSize = 6
-)
-
 type Map struct {
 	root   *bitmasked
 	hasher hash.Hash64
