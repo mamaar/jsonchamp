@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hash"
 	"hash/fnv"
-	"reflect"
 	goSlices "slices"
 	"strings"
 )
@@ -21,7 +20,7 @@ type Key struct {
 	hash uint64
 }
 
-func NewKey(key string, hash uint64) Key {
+func newKey(key string, hash uint64) Key {
 	return Key{key: key, hash: hash}
 }
 
@@ -100,10 +99,23 @@ func (m *Map) ToMap() map[string]any {
 	out := map[string]any{}
 	for _, k := range m.Keys() {
 		v, _ := m.Get(k)
+		v = normalizeValue(v)
 		switch v := v.(type) {
 		case *Map:
 			m := v.ToMap()
 			out[k] = m
+		case []any:
+			var sliceRes []any
+			for _, v := range v {
+				switch v := v.(type) {
+				case *Map:
+					m := v.ToMap()
+					sliceRes = append(sliceRes, m)
+				default:
+					sliceRes = append(sliceRes, v)
+				}
+			}
+			out[k] = sliceRes
 		default:
 			out[k] = v
 		}
@@ -153,62 +165,7 @@ func castPair[T any](a any, b any) (T, T) {
 // and return the other value if they are different.
 // If the value of a key is a map in both maps, the function will compare the maps recursively.
 func (m *Map) Diff(other *Map) (*Map, error) {
-	diff := New()
-
-	oneKeys := m.Keys()
-	otherKeys := other.Keys()
-	unionKeys := Union(oneKeys, otherKeys)
-
-	if len(unionKeys) == 0 {
-		return diff, nil
-	}
-
-	for _, k := range unionKeys {
-		oneValue, oneExists := m.Get(k)
-		otherValue, otherExists := other.Get(k)
-		if oneExists && !otherExists {
-			diff = diff.Set(k, nil)
-		}
-		if !oneExists && otherExists {
-			diff = diff.Set(k, otherValue)
-			continue
-		}
-		if reflect.TypeOf(oneValue) != reflect.TypeOf(otherValue) {
-			diff = diff.Set(k, otherValue)
-			continue
-		}
-		oneValue, otherValue = toLargestType(oneValue), toLargestType(otherValue)
-		switch oneValue.(type) {
-		case *Map:
-			oneMap, otherMap := castPair[*Map](oneValue, otherValue)
-			subDiff, err := oneMap.Diff(otherMap)
-			if err != nil {
-				return nil, err
-			}
-			if len(subDiff.Keys()) > 0 {
-				diff = diff.Set(k, subDiff)
-			}
-		case string:
-			oneString, otherString := castPair[string](oneValue, otherValue)
-			if oneString != otherString {
-				diff = diff.Set(k, otherString)
-			}
-		case int64:
-			oneInt, otherInt := castPair[int64](oneValue, otherValue)
-			if oneInt != otherInt {
-				diff = diff.Set(k, otherInt)
-			}
-		case float64:
-			oneFloat, otherFloat := castPair[float64](oneValue, otherValue)
-			if oneFloat != otherFloat {
-				diff = diff.Set(k, otherFloat)
-			}
-		default:
-			return nil, fmt.Errorf("unsupported type for diffing: %T", oneValue)
-		}
-	}
-
-	return diff, nil
+	return diffMap(m, other), nil
 }
 
 // Get retrieves the value of a key from a map.
@@ -217,7 +174,7 @@ func (m *Map) Diff(other *Map) (*Map, error) {
 func (m *Map) Get(key any) (any, bool) {
 	switch k := key.(type) {
 	case string:
-		return m.root.get(NewKey(k, m.hash(k)))
+		return m.root.get(newKey(k, m.hash(k)))
 	case []string:
 		if len(k) == 0 {
 			return nil, false
@@ -317,9 +274,10 @@ func (m *Map) GetInt(key string) (int, error) {
 
 // Set implements node.
 func (m *Map) Set(key string, value any) *Map {
-	h := m.hash(key)
-	m.root = m.root.set(NewKey(key, h), value).(*bitmasked)
-	return m
+	n := m.Copy()
+	h := n.hash(key)
+	n.root = n.root.set(newKey(key, h), value).(*bitmasked)
+	return n
 }
 
 // Keys returns a list of all keys in the map.
@@ -360,11 +318,12 @@ func (m *Map) Merge(other *Map) *Map {
 
 // Delete removes a key from the map and returns a new map without the key.
 func (m *Map) Delete(key string) (*Map, bool) {
-	k := NewKey(key, m.hash(key))
+	n := m.Copy()
+	k := newKey(key, n.hash(key))
 	var wasDeleted bool
-	m.root, wasDeleted = m.root.delete(k)
+	n.root, wasDeleted = n.root.delete(k)
 
-	return m, wasDeleted
+	return n, wasDeleted
 }
 
 func (m *Map) Contains(key string) bool {

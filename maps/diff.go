@@ -1,8 +1,15 @@
 package maps
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
-func mapToAnySlice(in any) []any {
+var (
+	mapType = reflect.TypeOf(&Map{})
+)
+
+func normalizeSlice(in any) []any {
 	if reflect.TypeOf(in).Kind() != reflect.Slice {
 		return []any{}
 	}
@@ -21,31 +28,84 @@ func mapToAnySlice(in any) []any {
 	return result
 }
 
-// DiffSlice checks that the two slices are equal and returns a slice containing the other slice and whether the slices differ.
-func DiffSlice[T comparable](one []T, other []T) ([]T, bool) {
-	if len(one) != len(other) {
-		return other, true
+func normalizeValue(in any) any {
+	t := reflect.TypeOf(in)
+	switch t.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return reflect.ValueOf(in).Int()
+	case reflect.Slice:
+		return normalizeSlice(in)
+	case reflect.String:
+		return in.(string)
+	case mapType.Kind():
+		return in.(*Map)
+	default:
+		panic(fmt.Sprintf("unsupported type to normalize %v", t))
 	}
-	for i := range one {
-		oneType := reflect.TypeOf(one[i])
-		otherType := reflect.TypeOf(other[i])
-		if oneType.Kind() != otherType.Kind() {
-			return other, true
+}
+
+func diffMap(m *Map, other *Map) *Map {
+	diff := New()
+
+	oneKeys := m.Keys()
+	otherKeys := other.Keys()
+	unionKeys := union(oneKeys, otherKeys)
+
+	if len(unionKeys) == 0 {
+		return diff
+	}
+
+	for _, k := range unionKeys {
+		oneValue, oneExists := m.Get(k)
+		otherValue, otherExists := other.Get(k)
+		if oneExists && !otherExists {
+			diff = diff.Set(k, nil)
 		}
-		switch oneType.Kind() {
-		case reflect.Slice:
-			oneSlice := mapToAnySlice(one[i])
-			otherSlice := mapToAnySlice(other[i])
-			_, hasDiff := DiffSlice(oneSlice, otherSlice)
-			if hasDiff {
-				return other, true
+		if !oneExists && otherExists {
+			diff = diff.Set(k, otherValue)
+			continue
+		}
+
+		oneValue = normalizeValue(oneValue)
+		otherValue = normalizeValue(otherValue)
+
+		if reflect.TypeOf(oneValue) != reflect.TypeOf(otherValue) {
+			diff = diff.Set(k, otherValue)
+			continue
+		}
+		oneValue, otherValue = toLargestType(oneValue), toLargestType(otherValue)
+		switch oneValue.(type) {
+		case *Map:
+			oneMap, otherMap := castPair[*Map](oneValue, otherValue)
+			subDiff := diffMap(oneMap, otherMap)
+			if len(subDiff.Keys()) > 0 {
+				diff = diff.Set(k, subDiff)
 			}
-			return other, false
+		case string:
+			oneString, otherString := castPair[string](oneValue, otherValue)
+			if oneString != otherString {
+				diff = diff.Set(k, otherString)
+			}
+		case int64:
+			oneInt, otherInt := castPair[int64](oneValue, otherValue)
+			if oneInt != otherInt {
+				diff = diff.Set(k, otherInt)
+			}
+		case float64:
+			oneFloat, otherFloat := castPair[float64](oneValue, otherValue)
+			if oneFloat != otherFloat {
+				diff = diff.Set(k, otherFloat)
+			}
+		case []any:
+			oneSlice, otherSlice := castPair[[]any](oneValue, otherValue)
+			slicesAreEqual := EqualsAnyList(oneSlice, otherSlice)
+			if !slicesAreEqual {
+				diff = diff.Set(k, otherSlice)
+			}
 		default:
-			if one[i] != other[i] {
-				return other, true
-			}
+			panic(fmt.Sprintf("Unhandled type %T", oneValue))
 		}
 	}
-	return other, false
+
+	return diff
 }

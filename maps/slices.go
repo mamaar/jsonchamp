@@ -106,7 +106,7 @@ func EqualsAny(a any, b any) bool {
 	}
 }
 
-func Union(one []string, other []string) []string {
+func union(one []string, other []string) []string {
 	keyMap := make(map[string]struct{}, len(one))
 	for _, k := range one {
 		keyMap[k] = struct{}{}

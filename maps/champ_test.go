@@ -263,67 +263,6 @@ func TestDiff(t *testing.T) {
 	}
 }
 
-func TestDiffSlice(t *testing.T) {
-	type args struct {
-		one   []any
-		other []any
-	}
-	tests := []struct {
-		name     string
-		args     args
-		wantDiff bool
-	}{
-		{
-			name: "two empty slices are equal",
-			args: args{
-				one:   []any{},
-				other: []any{},
-			},
-			wantDiff: false,
-		},
-		{
-			name: "two slices with equal values are equal",
-			args: args{
-				one:   []any{1},
-				other: []any{1},
-			},
-			wantDiff: false,
-		},
-		{
-			name: "two slices with different values are not equal",
-			args: args{
-				one:   []any{1},
-				other: []any{2},
-			},
-			wantDiff: true,
-		},
-		{
-			name: "nested slices with equal values are equal",
-			args: args{
-				one:   []any{[]any{1}},
-				other: []any{[]any{1}},
-			},
-			wantDiff: false,
-		},
-		{
-			name: "nested slices with different values are not equal",
-			args: args{
-				one:   []any{[]any{1}},
-				other: []any{[]any{2}},
-			},
-			wantDiff: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, hasDiff := DiffSlice(tt.args.one, tt.args.other)
-			if hasDiff != tt.wantDiff {
-				t.Errorf("expected diff: %v, got: %v", tt.wantDiff, hasDiff)
-			}
-		})
-	}
-}
-
 func TestDiffMapNoNested(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -585,16 +524,6 @@ func TestHavePathInCommon(t *testing.T) {
 				t.Errorf("HavePathInCommon() = %v, want %v", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestInformationPaths(t *testing.T) {
-	f := NewFromItems("a", 1, "b", NewFromItems("c", 2))
-	paths := InformationPaths(f)
-	expected := []string{"a", "b.c"}
-
-	if _, hasDiff := DiffSlice(paths, expected); hasDiff {
-		t.Fatalf("have %v, want %v", paths, expected)
 	}
 }
 

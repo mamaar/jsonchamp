@@ -66,7 +66,9 @@ func TestToStruct(t *testing.T) {
 		B int
 		S int `champ:"c"`
 	}
-	s, err := ToStruct[testStruct](m)
+
+	var s testStruct
+	err := ToStruct(m, &s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,8 +90,8 @@ func TestToStructWithMoreCoverage(t *testing.T) {
 	type testStruct struct {
 		A string `champ:"a"`
 	}
-
-	s, err := ToStruct[testStruct](m)
+	var s testStruct
+	err := ToStruct(m, &s)
 	if err != nil {
 		t.Fatal(err)
 	}

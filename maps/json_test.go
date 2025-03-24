@@ -2,6 +2,7 @@ package maps
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -165,4 +166,45 @@ func TestHeterogeneousMap_MarshalJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeepJSONStructure(t *testing.T) {
+	deepRaw := `
+{
+	"items": {
+		"key": "value",
+		"nested": {
+			"key": "value",
+			"nested": {
+				"key": "value",
+				"nested": {
+					"inner": "value"
+				}
+			}
+		}
+	},
+	"array": [
+		{ "key": "value" },
+		{ "key": "value2" },
+		{ "key": "value3" }
+	]
+}`
+	var deep *Map
+	err := json.Unmarshal([]byte(deepRaw), &deep)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	items, _ := deep.GetMap("items")
+	nested, _ := items.GetMap("nested")
+	nested2, _ := nested.GetMap("nested")
+	nested2 = nested2.Set("key", "new")
+	nested = nested.Set("nested", nested2)
+	items = items.Set("nested", nested)
+	result := deep.Set("items", items)
+	result = result.Set("array", []any{"value1", "value2", "value3"})
+
+	deepMap := deep.ToMap()
+	fmt.Printf("%+v", deepMap)
+
 }
