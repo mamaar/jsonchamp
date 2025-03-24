@@ -177,6 +177,7 @@ func (m *Map) Diff(other *Map) (*Map, error) {
 			diff = diff.Set(k, otherValue)
 			continue
 		}
+		oneValue, otherValue = toLargestType(oneValue), toLargestType(otherValue)
 		switch oneValue.(type) {
 		case *Map:
 			oneMap, otherMap := castPair[*Map](oneValue, otherValue)
@@ -192,11 +193,18 @@ func (m *Map) Diff(other *Map) (*Map, error) {
 			if oneString != otherString {
 				diff = diff.Set(k, otherString)
 			}
-		case int:
-			oneInt, otherInt := castPair[int](oneValue, otherValue)
+		case int64:
+			oneInt, otherInt := castPair[int64](oneValue, otherValue)
 			if oneInt != otherInt {
 				diff = diff.Set(k, otherInt)
 			}
+		case float64:
+			oneFloat, otherFloat := castPair[float64](oneValue, otherValue)
+			if oneFloat != otherFloat {
+				diff = diff.Set(k, otherFloat)
+			}
+		default:
+			return nil, fmt.Errorf("unsupported type for diffing: %T", oneValue)
 		}
 	}
 
