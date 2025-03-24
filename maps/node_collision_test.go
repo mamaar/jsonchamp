@@ -15,7 +15,7 @@ func TestCollisionGet(t *testing.T) {
 	}{
 		{
 			setuo: func() *collision {
-				return &collision{values: []*value{{key: NewKey("key", 1), value: "hello"}}}
+				return &collision{values: []*value{{key: newKey("key", 1), value: "hello"}}}
 			},
 			key:           1,
 			expectedOk:    true,
@@ -23,7 +23,7 @@ func TestCollisionGet(t *testing.T) {
 		},
 		{
 			setuo: func() *collision {
-				return &collision{values: []*value{{key: NewKey("key", 1), value: "world"}}}
+				return &collision{values: []*value{{key: newKey("key", 1), value: "world"}}}
 			},
 			key:           2,
 			expectedOk:    false,
@@ -31,7 +31,7 @@ func TestCollisionGet(t *testing.T) {
 		},
 		{
 			setuo: func() *collision {
-				return &collision{values: []*value{{key: NewKey("key", 1), value: "hello"}, {key: NewKey("key", 2), value: "world"}}}
+				return &collision{values: []*value{{key: newKey("key", 1), value: "hello"}, {key: newKey("key", 2), value: "world"}}}
 			},
 			key:           2,
 			expectedOk:    true,
@@ -41,7 +41,7 @@ func TestCollisionGet(t *testing.T) {
 
 	for _, tt := range tests {
 		c := tt.setuo()
-		got, ok := c.get(NewKey("key", tt.key))
+		got, ok := c.get(newKey("key", tt.key))
 
 		if ok != tt.expectedOk {
 			t.Errorf("get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
@@ -56,20 +56,20 @@ func TestCollisionGet(t *testing.T) {
 
 func TestCollisionSet(t *testing.T) {
 	var c node
-	c = &collision{values: []*value{{key: NewKey("key_1", 1), value: "hello"}}}
+	c = &collision{values: []*value{{key: newKey("key_1", 1), value: "hello"}}}
 
-	c = c.set(NewKey("key_2", 1), "world")
+	c = c.set(newKey("key_2", 1), "world")
 
 	if len(c.(*collision).values) != 2 {
 		t.Errorf("set(2) = %v; want %v", len(c.(*collision).values), 2)
 	}
 
-	c = c.set(NewKey("key_1", 1), "world")
+	c = c.set(newKey("key_1", 1), "world")
 	if len(c.(*collision).values) != 2 {
 		t.Errorf("set(1) = %v; want %v", len(c.(*collision).values), 2)
 	}
 
-	v, ok := c.get(NewKey("key_1", 1))
+	v, ok := c.get(newKey("key_1", 1))
 	if !ok {
 		t.Errorf("get(1) = %v; want %v", ok, true)
 	}
@@ -77,7 +77,7 @@ func TestCollisionSet(t *testing.T) {
 		t.Errorf("get(1) = %v; want %v", v, "world")
 	}
 
-	v2, ok := c.get(NewKey("key_2", 1))
+	v2, ok := c.get(newKey("key_2", 1))
 	if !ok {
 		t.Errorf("get(2) = %v; want %v", ok, true)
 	}

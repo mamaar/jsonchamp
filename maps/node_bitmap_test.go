@@ -20,10 +20,10 @@ func TestBitmapGet(t *testing.T) {
 			setuo: func() *bitmasked {
 				return &bitmasked{
 					valueMap: 0b0000_0000_0000_0000,
-					values:   []node{&value{key: NewKey("key", 1), value: "hello"}},
+					values:   []node{&value{key: newKey("key", 1), value: "hello"}},
 				}
 			},
-			key:           NewKey("key", 1<<10),
+			key:           newKey("key", 1<<10),
 			expectedOk:    false,
 			expectedValue: nil,
 		},
@@ -32,10 +32,10 @@ func TestBitmapGet(t *testing.T) {
 			setuo: func() *bitmasked {
 				return &bitmasked{
 					valueMap: 0b0000_0001,
-					values:   []node{&value{key: NewKey("key", 1), value: "world"}},
+					values:   []node{&value{key: newKey("key", 1), value: "world"}},
 				}
 			},
-			key:           NewKey("key", 2),
+			key:           newKey("key", 2),
 			expectedOk:    false,
 			expectedValue: nil,
 		},
@@ -44,10 +44,10 @@ func TestBitmapGet(t *testing.T) {
 			setuo: func() *bitmasked {
 				return &bitmasked{
 					valueMap: 0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
-					values:   []node{&value{key: NewKey("key", 1<<63), value: "hello"}},
+					values:   []node{&value{key: newKey("key", 1<<63), value: "hello"}},
 				}
 			},
-			key:           NewKey("key", 1<<63),
+			key:           newKey("key", 1<<63),
 			expectedOk:    true,
 			expectedValue: "hello",
 		},
@@ -56,7 +56,7 @@ func TestBitmapGet(t *testing.T) {
 			setuo: func() *bitmasked {
 				return &bitmasked{
 					valueMap: 0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
-					values:   []node{&collision{values: []*value{{key: NewKey("key_1", 1<<63), value: "hello"}, {key: NewKey("key_2", 1<<63), value: "world"}}}},
+					values:   []node{&collision{values: []*value{{key: newKey("key_1", 1<<63), value: "hello"}, {key: newKey("key_2", 1<<63), value: "world"}}}},
 				}
 			},
 			key:           Key{key: "key_1", hash: 1 << 63},
@@ -86,12 +86,12 @@ func TestBitmapSet(t *testing.T) {
 	var c node
 	c = &bitmasked{values: []node{}}
 
-	c = c.set(NewKey("key_1", 1<<63), "hello")
+	c = c.set(newKey("key_1", 1<<63), "hello")
 	if len(c.(*bitmasked).values) != 1 {
 		t.Fatalf("set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
 	}
 
-	if _, ok := c.get(NewKey("key_1", 1<<63)); !ok {
+	if _, ok := c.get(newKey("key_1", 1<<63)); !ok {
 		t.Fatalf("get(1) = %v; want %v", ok, true)
 	}
 }
@@ -100,18 +100,18 @@ func TestBitmapSetWithCollision(t *testing.T) {
 	var c node
 	c = &bitmasked{values: []node{}}
 
-	c = c.set(NewKey("key_1", 1<<63), "hello")
-	c = c.set(NewKey("key_2", 1<<63|1<<47), "world")
+	c = c.set(newKey("key_1", 1<<63), "hello")
+	c = c.set(newKey("key_2", 1<<63|1<<47), "world")
 
 	if len(c.(*bitmasked).values) != 1 {
 		t.Fatalf("set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
 	}
 
-	if _, ok := c.get(NewKey("key_1", 1<<63)); !ok {
+	if _, ok := c.get(newKey("key_1", 1<<63)); !ok {
 		t.Fatalf("get(1) = %v; want %v", ok, true)
 	}
 
-	if _, ok := c.get(NewKey("key_2", 1<<63|1<<47)); !ok {
+	if _, ok := c.get(newKey("key_2", 1<<63|1<<47)); !ok {
 		t.Fatalf("get(2) = %v; want %v", ok, true)
 	}
 }

@@ -15,7 +15,7 @@ func TestValueGet(t *testing.T) {
 	}{
 		{
 			setup: func() *value {
-				return &value{key: NewKey("key", 1), value: "hello"}
+				return &value{key: newKey("key", 1), value: "hello"}
 			},
 			key:           1,
 			expectedOk:    true,
@@ -23,7 +23,7 @@ func TestValueGet(t *testing.T) {
 		},
 		{
 			setup: func() *value {
-				return &value{key: NewKey("key", 1), value: "world"}
+				return &value{key: newKey("key", 1), value: "world"}
 			},
 			key:           2,
 			expectedOk:    false,
@@ -33,7 +33,7 @@ func TestValueGet(t *testing.T) {
 
 	for _, tt := range tests {
 		v := tt.setup()
-		got, ok := v.get(NewKey("key", tt.key))
+		got, ok := v.get(newKey("key", tt.key))
 
 		if ok != tt.expectedOk {
 			t.Errorf("get(%v) = %v; want %v", tt.key, ok, tt.expectedOk)
@@ -48,10 +48,10 @@ func TestValueGet(t *testing.T) {
 
 func TestValueSet(t *testing.T) {
 
-	var v node = &value{key: NewKey("key", 1<<63), value: "hello"}
-	v = v.set(NewKey("key", 1<<63), "world")
+	var v node = &value{key: newKey("key", 1<<63), value: "hello"}
+	v = v.set(newKey("key", 1<<63), "world")
 
-	world, ok := v.get(NewKey("key", 1<<63))
+	world, ok := v.get(newKey("key", 1<<63))
 	if !ok {
 		t.Errorf("get(1) = %v; want %v", ok, true)
 	}
@@ -62,9 +62,9 @@ func TestValueSet(t *testing.T) {
 }
 
 func TestValueSetWithCollision(t *testing.T) {
-	v := &value{key: NewKey("key", 1)}
+	v := &value{key: newKey("key", 1)}
 
-	n := v.set(NewKey("something", 1), "hello")
+	n := v.set(newKey("something", 1), "hello")
 
 	_, isCollision := n.(*collision)
 	if !isCollision {

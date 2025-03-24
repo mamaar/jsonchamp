@@ -114,6 +114,8 @@ func (b *bitmasked) mergeValueToSubNode(newLevel uint8, keyA Key, valueA any, ke
 func (b *bitmasked) set(key Key, newValue any) node {
 	pos := bitPosition(key.hash, b.level)
 
+	copied := b.copy().(*bitmasked)
+
 	valueExists := b.valueMap&pos != 0
 	if valueExists {
 		valueIdx := b.index(pos)
@@ -124,17 +126,15 @@ func (b *bitmasked) set(key Key, newValue any) node {
 		}
 		// If it's the same key, we can just update the value.
 		if existingValue.key.hash == key.hash && existingValue.key.key == key.key {
-			newB := b.copy().(*bitmasked)
-			newB.values[valueIdx] = &value{key: key, value: newValue}
-			return newB
+			copied.values[valueIdx] = &value{key: key, value: newValue}
+			return copied
 		}
 
 		// If it's a different key, we need to handle the collision
-		newMap := b.copy().(*bitmasked)
-		newMap.valueMap = b.valueMap ^ pos
-		newMap.subMapsMap = b.subMapsMap | pos
-		newMap.values[valueIdx] = b.mergeValueToSubNode(b.level+1, existingValue.key, existingValue.value, key, newValue)
-		return newMap
+		copied.valueMap = b.valueMap ^ pos
+		copied.subMapsMap = b.subMapsMap | pos
+		copied.values[valueIdx] = b.mergeValueToSubNode(b.level+1, existingValue.key, existingValue.value, key, newValue)
+		return copied
 	}
 
 	nodeExists := b.subMapsMap&pos != 0
@@ -144,25 +144,22 @@ func (b *bitmasked) set(key Key, newValue any) node {
 		if !ok {
 			panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, b.values[subNodeIndex]))
 		}
-		newB := b.copy().(*bitmasked)
-		newB.values[subNodeIndex] = subNode.set(key, newValue)
-		return newB
+		copied.values[subNodeIndex] = subNode.set(key, newValue)
+		return copied
 	}
-
-	newB := b.copy().(*bitmasked)
 
 	newValueIndex := b.index(pos)
 
 	var before []node
-	if len(newB.values) > 0 {
-		before = newB.values[:newValueIndex]
+	if len(copied.values) > 0 {
+		before = copied.values[:newValueIndex]
 	} else {
 		before = []node{}
 	}
 
 	var after []node
-	if newValueIndex < len(newB.values) {
-		after = newB.values[newValueIndex:]
+	if newValueIndex < len(copied.values) {
+		after = copied.values[newValueIndex:]
 	} else {
 		after = []node{}
 	}
@@ -170,9 +167,9 @@ func (b *bitmasked) set(key Key, newValue any) node {
 	newValues = append(newValues, before...)
 	newValues = append(newValues, &value{key: key, value: newValue})
 	newValues = append(newValues, after...)
-	newB.valueMap |= pos
-	newB.values = newValues
-	return newB
+	copied.valueMap |= pos
+	copied.values = newValues
+	return copied
 }
 
 func (b *bitmasked) copy() node {
