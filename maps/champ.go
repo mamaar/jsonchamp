@@ -115,7 +115,7 @@ func (m *Map) ToMap() map[string]any {
 func (m *Map) Copy() *Map {
 	newMap := New()
 	newMap.hasher = m.hasher
-	newMap.root = m.root.copy()
+	newMap.root = m.root.copy().(*bitmasked)
 	return newMap
 }
 

@@ -124,13 +124,13 @@ func (b *bitmasked) set(key Key, newValue any) node {
 		}
 		// If it's the same key, we can just update the value.
 		if existingValue.key.hash == key.hash && existingValue.key.key == key.key {
-			newB := b.copy()
+			newB := b.copy().(*bitmasked)
 			newB.values[valueIdx] = &value{key: key, value: newValue}
 			return newB
 		}
 
 		// If it's a different key, we need to handle the collision
-		newMap := b.copy()
+		newMap := b.copy().(*bitmasked)
 		newMap.valueMap = b.valueMap ^ pos
 		newMap.subMapsMap = b.subMapsMap | pos
 		newMap.values[valueIdx] = b.mergeValueToSubNode(b.level+1, existingValue.key, existingValue.value, key, newValue)
@@ -144,12 +144,12 @@ func (b *bitmasked) set(key Key, newValue any) node {
 		if !ok {
 			panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, b.values[subNodeIndex]))
 		}
-		newB := b.copy()
+		newB := b.copy().(*bitmasked)
 		newB.values[subNodeIndex] = subNode.set(key, newValue)
 		return newB
 	}
 
-	newB := b.copy()
+	newB := b.copy().(*bitmasked)
 
 	newValueIndex := b.index(pos)
 
@@ -175,9 +175,13 @@ func (b *bitmasked) set(key Key, newValue any) node {
 	return newB
 }
 
-func (b *bitmasked) copy() *bitmasked {
+func (b *bitmasked) copy() node {
 	newValues := make([]node, len(b.values))
-	copy(newValues, b.values)
+
+	for i, v := range b.values {
+		newValues[i] = v.copy()
+	}
+
 	return &bitmasked{
 		level:      b.level,
 		valueMap:   b.valueMap,
@@ -197,7 +201,7 @@ func (b *bitmasked) delete(key Key) (*bitmasked, bool) {
 	if valueExists {
 		valueIdx := b.index(pos)
 
-		newMap := b.copy()
+		newMap := b.copy().(*bitmasked)
 		newMap.valueMap = b.valueMap ^ pos
 		newMap.values = append(b.values[:valueIdx], b.values[valueIdx+1:]...)
 		return newMap, true
@@ -210,18 +214,18 @@ func (b *bitmasked) delete(key Key) (*bitmasked, bool) {
 		if !ok {
 			panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, b.values[subNodeIndex]))
 		}
-		subNodeCopy := subNode.copy()
+		subNodeCopy := subNode.copy().(*bitmasked)
 		subNodeCopy, ok = subNodeCopy.delete(key)
 
 		// The last key in the subnode was deleted, so we remove the subnode.
 		if len(subNodeCopy.values) == 0 {
-			newMap := b.copy()
+			newMap := b.copy().(*bitmasked)
 			newMap.subMapsMap = b.subMapsMap ^ pos
 			newMap.values = append(b.values[:subNodeIndex], b.values[subNodeIndex+1:]...)
 			return newMap, ok
 		}
 
-		newB := b.copy()
+		newB := b.copy().(*bitmasked)
 		newB.values[subNodeIndex] = subNodeCopy
 		return newB, ok
 	}

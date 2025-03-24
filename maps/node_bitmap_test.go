@@ -209,3 +209,42 @@ func TestPartitionMask(t *testing.T) {
 		}
 	}
 }
+
+func TestBitmapCopy(t *testing.T) {
+	b := &bitmasked{
+		level:      0,
+		valueMap:   0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
+		subMapsMap: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+		values:     []node{&bitmasked{level: 1}, &bitmasked{level: 2}},
+	}
+
+	newB := b.copy().(*bitmasked)
+
+	if b.level != newB.level {
+		t.Errorf("level = %d; want %d", newB.level, b.level)
+	}
+
+	if b.valueMap != newB.valueMap {
+		t.Errorf("valueMap = %064b; want %064b", newB.valueMap, b.valueMap)
+	}
+
+	if b.subMapsMap != newB.subMapsMap {
+		t.Errorf("subMapsMap = %064b; want %064b", newB.subMapsMap, b.subMapsMap)
+	}
+
+	if b.values[0] == newB.values[0] {
+		t.Errorf("values[0] = %v; want %v", newB.values[0], b.values[0])
+	}
+
+	if b.values[1] == newB.values[1] {
+		t.Errorf("values[1] = %v; want %v", newB.values[1], b.values[1])
+	}
+
+	if b.values[0].(*bitmasked).level != newB.values[0].(*bitmasked).level {
+		t.Errorf("values[0].level = %d; want %d", newB.values[0].(*bitmasked).level, b.values[0].(*bitmasked).level)
+	}
+
+	if b.values[1].(*bitmasked).level != newB.values[1].(*bitmasked).level {
+		t.Errorf("values[1].level = %d; want %d", newB.values[1].(*bitmasked).level, b.values[1].(*bitmasked).level)
+	}
+}

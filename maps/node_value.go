@@ -24,11 +24,19 @@ func (v *value) set(key Key, newValue any) node {
 type node interface {
 	get(key Key) (any, bool)
 	set(key Key, value any) node
+	copy() node
 }
 
 type value struct {
 	key   Key
 	value any
+}
+
+func (v *value) copy() node {
+	return &value{
+		key:   v.key,
+		value: v.value,
+	}
 }
 
 // Get implements node.
