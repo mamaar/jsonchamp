@@ -138,10 +138,34 @@ func ToStruct(m *Map, out any) error {
 func FromNativeMap(in map[string]any) *Map {
 	res := New()
 	for k, v := range in {
-		if subMap, isMap := v.(map[string]any); isMap {
-			res = res.Set(k, FromNativeMap(subMap))
-		} else {
+		switch t := v.(type) {
+		case map[string]any:
+			res = res.Set(k, FromNativeMap(t))
+		case []map[string]any:
+			var arr []*Map
+			for _, m := range t {
+				arr = append(arr, FromNativeMap(m))
+			}
+			res = res.Set(k, arr)
+		default:
 			res = res.Set(k, v)
+		}
+	}
+	return res
+}
+
+func toNativeSlice(in []any) []any {
+	var res []any
+	for _, v := range in {
+		switch t := v.(type) {
+		case map[string]any:
+			res = append(res, normalizeNativeMap(t))
+		case []any:
+			res = append(res, toNativeSlice(t))
+		case *Map:
+			res = append(res, ToNativeMap(t))
+		default:
+			res = append(res, v)
 		}
 	}
 	return res
@@ -151,9 +175,13 @@ func ToNativeMap(in *Map) map[string]any {
 	res := make(map[string]any)
 	for _, k := range in.Keys() {
 		v, _ := in.Get(k)
-		if subMap, isMap := v.(*Map); isMap {
-			res[k] = ToNativeMap(subMap)
-		} else {
+		switch reflect.TypeOf(v).Kind() {
+		case reflect.Map:
+			res[k] = ToNativeMap(v.(*Map))
+		case reflect.Slice:
+			sl := toNativeSlice(normalizeSlice(v))
+			res[k] = sl
+		default:
 			res[k] = v
 		}
 	}

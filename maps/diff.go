@@ -28,6 +28,25 @@ func normalizeSlice(in any) []any {
 	return result
 }
 
+func normalizeNativeMap(in map[string]any) map[string]any {
+	out := make(map[string]any, len(in))
+	for k, v := range in {
+		switch t := v.(type) {
+		case map[string]any:
+			out[k] = normalizeNativeMap(t)
+		case []map[string]any:
+			var arr []any
+			for _, m := range t {
+				arr = append(arr, normalizeValue(m))
+			}
+			out[k] = arr
+		default:
+			out[k] = v
+		}
+	}
+	return out
+}
+
 func normalizeValue(in any) any {
 	t := reflect.TypeOf(in)
 	switch t.Kind() {
@@ -41,6 +60,8 @@ func normalizeValue(in any) any {
 		return in.(string)
 	case mapType.Kind():
 		return in.(*Map)
+	case reflect.Map:
+		return normalizeNativeMap(in.(map[string]any))
 	default:
 		panic(fmt.Sprintf("unsupported type to normalize %v", t))
 	}

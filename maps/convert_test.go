@@ -116,13 +116,19 @@ func TestToNativeMap(t *testing.T) {
 			in:   NewFromItems("a", 1, "b", NewFromItems("c", 3)),
 			want: map[string]any{"a": 1, "b": map[string]any{"c": 3}},
 		},
+		{
+			name: "slice of map",
+			in:   NewFromItems("a", 1, "b", []any{NewFromItems("c", 3), NewFromItems("d", 4)}),
+			want: map[string]any{"a": 1, "b": []map[string]any{{"c": 3}, {"d": 5}}},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ToNativeMap(tt.in)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ToNativeMap() = %v, want %v", got, tt.want)
+
+			if !reflect.DeepEqual(got, normalizeNativeMap(tt.want)) {
+				t.Fatalf("ToNativeMap() = %v, want %v", got, normalizeNativeMap(tt.want))
 			}
 		})
 	}
@@ -143,6 +149,11 @@ func TestFromNativeMap(t *testing.T) {
 			name: "nested",
 			in:   map[string]any{"a": 1, "b": map[string]any{"c": 3}},
 			want: NewFromItems("a", 1, "b", NewFromItems("c", 3)),
+		},
+		{
+			name: "slice of map",
+			in:   map[string]any{"a": 1, "b": []map[string]any{{"c": 3}, {"d": 4}}},
+			want: NewFromItems("a", 1, "b", []any{NewFromItems("c", 3), NewFromItems("d", 4)}),
 		},
 	}
 
