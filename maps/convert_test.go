@@ -119,16 +119,16 @@ func TestToNativeMap(t *testing.T) {
 		{
 			name: "slice of map",
 			in:   NewFromItems("a", 1, "b", []any{NewFromItems("c", 3), NewFromItems("d", 4)}),
-			want: map[string]any{"a": 1, "b": []map[string]any{{"c": 3}, {"d": 5}}},
+			want: map[string]any{"a": 1, "b": []map[string]any{{"c": 3}, {"d": 4}}},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ToNativeMap(tt.in)
-
-			if !reflect.DeepEqual(got, normalizeNativeMap(tt.want)) {
-				t.Fatalf("ToNativeMap() = %v, want %v", got, normalizeNativeMap(tt.want))
+			want := normalizeNativeMap(tt.want)
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("ToNativeMap() = %v, want %v", got, want)
 			}
 		})
 	}
