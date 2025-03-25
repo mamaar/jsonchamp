@@ -134,3 +134,28 @@ func ToStruct(m *Map, out any) error {
 
 	return nil
 }
+
+func FromNativeMap(in map[string]any) *Map {
+	res := New()
+	for k, v := range in {
+		if subMap, isMap := v.(map[string]any); isMap {
+			res = res.Set(k, FromNativeMap(subMap))
+		} else {
+			res = res.Set(k, v)
+		}
+	}
+	return res
+}
+
+func ToNativeMap(in *Map) map[string]any {
+	res := make(map[string]any)
+	for _, k := range in.Keys() {
+		v, _ := in.Get(k)
+		if subMap, isMap := v.(*Map); isMap {
+			res[k] = ToNativeMap(subMap)
+		} else {
+			res[k] = v
+		}
+	}
+	return res
+}

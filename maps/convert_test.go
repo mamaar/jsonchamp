@@ -2,6 +2,7 @@ package maps
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 )
 
@@ -97,4 +98,62 @@ func TestToStructWithMoreCoverage(t *testing.T) {
 	}
 
 	t.Logf("m: %v", s)
+}
+
+func TestToNativeMap(t *testing.T) {
+	tests := []struct {
+		name string
+		in   *Map
+		want map[string]any
+	}{
+		{
+			name: "simple",
+			in:   NewFromItems("a", 1, "b", 2, "c", 3),
+			want: map[string]any{"a": 1, "b": 2, "c": 3},
+		},
+		{
+			name: "nested",
+			in:   NewFromItems("a", 1, "b", NewFromItems("c", 3)),
+			want: map[string]any{"a": 1, "b": map[string]any{"c": 3}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ToNativeMap(tt.in)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ToNativeMap() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFromNativeMap(t *testing.T) {
+	tests := []struct {
+		name string
+		in   map[string]any
+		want *Map
+	}{
+		{
+			name: "simple",
+			in:   map[string]any{"a": 1, "b": 2, "c": 3},
+			want: NewFromItems("a", 1, "b", 2, "c", 3),
+		},
+		{
+			name: "nested",
+			in:   map[string]any{"a": 1, "b": map[string]any{"c": 3}},
+			want: NewFromItems("a", 1, "b", NewFromItems("c", 3)),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FromNativeMap(tt.in)
+
+			if diff, _ := got.Diff(tt.want); len(diff.Keys()) > 0 {
+				out, _ := json.MarshalIndent(diff, "", "  ")
+				t.Fatalf("%s", out)
+			}
+		})
+	}
 }
