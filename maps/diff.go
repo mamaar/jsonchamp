@@ -33,6 +33,8 @@ func normalizeValue(in any) any {
 	switch t.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return reflect.ValueOf(in).Int()
+	case reflect.Float32, reflect.Float64:
+		return reflect.ValueOf(in).Float()
 	case reflect.Slice:
 		return normalizeSlice(in)
 	case reflect.String:
