@@ -41,7 +41,7 @@ func normalizeNativeMap(in map[string]any) map[string]any {
 			}
 			out[k] = arr
 		default:
-			out[k] = v
+			out[k] = normalizeValue(t)
 		}
 	}
 	return out

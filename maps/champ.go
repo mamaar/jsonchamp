@@ -250,9 +250,10 @@ func (m *Map) GetInt(key string) (int, error) {
 
 // Set implements node.
 func (m *Map) Set(key string, value any) *Map {
+	value = normalizeValue(value)
 	n := m.Copy()
 	h := n.hash(key)
-	n.root = n.root.set(newKey(key, h), normalizeValue(value)).(*bitmasked)
+	n.root = n.root.set(newKey(key, h), value).(*bitmasked)
 	return n
 }
 
