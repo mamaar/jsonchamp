@@ -52,6 +52,7 @@ func bestEffortJsonName(n string) string {
 	return snakeCased
 }
 
+// ToStruct converts a Map to a struct without using JSON marshalling.
 func ToStruct(m *Map, out any) error {
 	structValue := reflect.ValueOf(out).Elem()
 

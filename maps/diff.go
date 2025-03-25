@@ -48,6 +48,9 @@ func normalizeNativeMap(in map[string]any) map[string]any {
 }
 
 func normalizeValue(in any) any {
+	if in == nil {
+		return nil
+	}
 	t := reflect.TypeOf(in)
 	switch t.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:

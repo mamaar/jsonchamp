@@ -96,31 +96,7 @@ func (m *Map) hash(key string) uint64 {
 
 // ToMap returns a native Go map with the same structure as the map.
 func (m *Map) ToMap() map[string]any {
-	out := map[string]any{}
-	for _, k := range m.Keys() {
-		v, _ := m.Get(k)
-		v = normalizeValue(v)
-		switch v := v.(type) {
-		case *Map:
-			m := v.ToMap()
-			out[k] = m
-		case []any:
-			var sliceRes []any
-			for _, v := range v {
-				switch v := v.(type) {
-				case *Map:
-					m := v.ToMap()
-					sliceRes = append(sliceRes, m)
-				default:
-					sliceRes = append(sliceRes, v)
-				}
-			}
-			out[k] = sliceRes
-		default:
-			out[k] = v
-		}
-	}
-	return out
+	return ToNativeMap(m)
 }
 
 // Copy returns a deep copy of a map.
@@ -276,7 +252,7 @@ func (m *Map) GetInt(key string) (int, error) {
 func (m *Map) Set(key string, value any) *Map {
 	n := m.Copy()
 	h := n.hash(key)
-	n.root = n.root.set(newKey(key, h), value).(*bitmasked)
+	n.root = n.root.set(newKey(key, h), normalizeValue(value)).(*bitmasked)
 	return n
 }
 
@@ -379,26 +355,15 @@ func InformationPaths(f *Map) []string {
 	return informationPaths([]string{}, f)
 }
 
-func HavePathInCommon(a *Map, b *Map) bool {
+// havePathInCommon returns true if two maps have any paths to leaf nodes in common.
+func havePathInCommon(a *Map, b *Map) bool {
 	aInformationPaths := InformationPaths(a)
 	bInformationPaths := InformationPaths(b)
-	hasInCommon := Intersection(aInformationPaths, bInformationPaths)
+	hasInCommon := intersection(aInformationPaths, bInformationPaths)
 	return len(hasInCommon) > 0
 }
 
-func Intersection(one []string, other []string) []string {
-	var intersections []string
-	for _, k := range one {
-		for _, j := range other {
-			if k == j {
-				intersections = append(intersections, k)
-			}
-		}
-	}
-	return intersections
-}
-
-func RefToLookup(ref *Map) []string {
+func refToLookup(ref *Map) []string {
 	refSource, ok := ref.Get("$ref")
 	if !ok {
 		return []string{}

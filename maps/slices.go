@@ -117,3 +117,15 @@ func union(one []string, other []string) []string {
 	keyIter := maps.Keys(keyMap)
 	return slices.Collect(keyIter)
 }
+
+func intersection(one []string, other []string) []string {
+	var intersections []string
+	for _, k := range one {
+		for _, j := range other {
+			if k == j {
+				intersections = append(intersections, k)
+			}
+		}
+	}
+	return intersections
+}

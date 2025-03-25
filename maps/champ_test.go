@@ -401,7 +401,7 @@ func TestIntersection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Intersection(tt.args.one, tt.args.other)
+			got := intersection(tt.args.one, tt.args.other)
 			if len(got) != len(tt.want) {
 				t.Fatalf("have %v, want %v", got, tt.want)
 			}
@@ -520,8 +520,8 @@ func TestHavePathInCommon(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := HavePathInCommon(tt.args.a, tt.args.b); got != tt.want {
-				t.Errorf("HavePathInCommon() = %v, want %v", got, tt.want)
+			if got := havePathInCommon(tt.args.a, tt.args.b); got != tt.want {
+				t.Errorf("havePathInCommon() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -560,8 +560,8 @@ func TestRefToLookup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := RefToLookup(tt.args.ref); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("RefToLookup() = %v, want %v", got, tt.want)
+			if got := refToLookup(tt.args.ref); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("refToLookup() = %v, want %v", got, tt.want)
 			}
 		})
 	}
