@@ -3,6 +3,7 @@ package maps
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 )
 
@@ -206,5 +207,23 @@ func TestDeepJSONStructure(t *testing.T) {
 
 	deepMap := deep.ToMap()
 	fmt.Printf("%+v", deepMap)
+}
 
+func TestMaxInt64(t *testing.T) {
+	j := `{"max":9223372036854775807}`
+	m := New()
+
+	err := json.Unmarshal([]byte(j), &m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := Get[int64](m, "max")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if v != math.MaxInt64 {
+		t.Fatalf("expected %d, got %d", math.MaxInt64, v)
+	}
 }

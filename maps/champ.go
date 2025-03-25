@@ -233,18 +233,18 @@ func (m *Map) GetFloat(key string) (float64, error) {
 }
 
 // GetInt retrieves the value of a key from a map and casts it to an int.
-func (m *Map) GetInt(key string) (int, error) {
+func (m *Map) GetInt(key string) (int64, error) {
 	v, ok := m.Get(key)
 	if !ok {
 		return 0, fmt.Errorf("%w: '%s'", ErrKeyNotFound, key)
 	}
 	switch v := v.(type) {
-	case int:
+	case int64:
 		return v, nil
 	case float64:
-		return int(v), nil
+		return int64(v), nil
 	default:
-		return 0, fmt.Errorf("%w: expected int, got %T", ErrWrongType, v)
+		return 0, fmt.Errorf("%w: expected int64, got %T", ErrWrongType, v)
 	}
 }
 
