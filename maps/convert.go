@@ -181,6 +181,8 @@ func ToNativeMap(in *Map) map[string]any {
 		case reflect.Slice:
 			sl := toNativeSlice(normalizeSlice(v))
 			res[k] = sl
+		case mapType.Kind():
+			res[k] = ToNativeMap(v.(*Map))
 		default:
 			res[k] = v
 		}
