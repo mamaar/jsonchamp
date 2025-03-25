@@ -60,6 +60,7 @@ func diffMap(m *Map, other *Map) *Map {
 		otherValue, otherExists := other.Get(k)
 		if oneExists && !otherExists {
 			diff = diff.Set(k, nil)
+			continue
 		}
 		if !oneExists && otherExists {
 			diff = diff.Set(k, otherValue)
