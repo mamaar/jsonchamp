@@ -1,4 +1,4 @@
-package maps
+package jsonchamp
 
 import (
 	"encoding/json"
@@ -6,10 +6,10 @@ import (
 )
 
 func ExampleUnmarshal() {
-	const rawJson = `{"name": "John", "age": 30}`
+	const rawJSON = `{"name": "John", "age": 30}`
 
 	var rawMap *Map
-	if err := json.Unmarshal([]byte(rawJson), &rawMap); err != nil {
+	if err := json.Unmarshal([]byte(rawJSON), &rawMap); err != nil {
 		panic(err)
 	}
 

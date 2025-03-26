@@ -1,16 +1,19 @@
-package maps
+package jsonchamp
 
 import (
+	"fmt"
 	"testing"
 )
 
 func TestBitmapGet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 
 		setuo func() *bitmasked
 
-		key Key
+		key key
 
 		expectedValue any
 		expectedOk    bool
@@ -19,8 +22,10 @@ func TestBitmapGet(t *testing.T) {
 			name: "empty",
 			setuo: func() *bitmasked {
 				return &bitmasked{
-					valueMap: 0b0000_0000_0000_0000,
-					values:   []node{&value{key: newKey("key", 1), value: "hello"}},
+					level:      0,
+					valueMap:   0b0000_0000_0000_0000,
+					subMapsMap: 0,
+					values:     []node{value{key: newKey("key", 1), value: "hello"}},
 				}
 			},
 			key:           newKey("key", 1<<10),
@@ -31,8 +36,10 @@ func TestBitmapGet(t *testing.T) {
 			name: "not found",
 			setuo: func() *bitmasked {
 				return &bitmasked{
-					valueMap: 0b0000_0001,
-					values:   []node{&value{key: newKey("key", 1), value: "world"}},
+					level:      0,
+					valueMap:   0b0000_0001,
+					subMapsMap: 0,
+					values:     []node{value{key: newKey("key", 1), value: "world"}},
 				}
 			},
 			key:           newKey("key", 2),
@@ -43,8 +50,10 @@ func TestBitmapGet(t *testing.T) {
 			name: "value found",
 			setuo: func() *bitmasked {
 				return &bitmasked{
-					valueMap: 0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
-					values:   []node{&value{key: newKey("key", 1<<63), value: "hello"}},
+					level:      0,
+					valueMap:   0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
+					subMapsMap: 0,
+					values:     []node{value{key: newKey("key", 1<<63), value: "hello"}},
 				}
 			},
 			key:           newKey("key", 1<<63),
@@ -55,11 +64,15 @@ func TestBitmapGet(t *testing.T) {
 			name: "collision on one section",
 			setuo: func() *bitmasked {
 				return &bitmasked{
-					valueMap: 0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
-					values:   []node{&collision{values: []*value{{key: newKey("key_1", 1<<63), value: "hello"}, {key: newKey("key_2", 1<<63), value: "world"}}}},
+					level:      0,
+					valueMap:   0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
+					subMapsMap: 0,
+					values: []node{&collision{values: []value{
+						{key: newKey("key_1", 1<<63), value: "hello"},
+						{key: newKey("key_2", 1<<63), value: "world"}}}},
 				}
 			},
-			key:           Key{key: "key_1", hash: 1 << 63},
+			key:           key{key: "key_1", hash: 1 << 63},
 			expectedOk:    true,
 			expectedValue: "hello",
 		},
@@ -67,6 +80,8 @@ func TestBitmapGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			b := tt.setuo()
 			got, ok := b.get(tt.key)
 
@@ -78,13 +93,19 @@ func TestBitmapGet(t *testing.T) {
 				t.Errorf("get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
 			}
 		})
-
 	}
 }
 
 func TestBitmapSet(t *testing.T) {
+	t.Parallel()
+
 	var c node
-	c = &bitmasked{values: []node{}}
+	c = &bitmasked{
+		level:      0,
+		valueMap:   0,
+		subMapsMap: 0,
+		values:     []node{},
+	}
 
 	c = c.set(newKey("key_1", 1<<63), "hello")
 	if len(c.(*bitmasked).values) != 1 {
@@ -97,8 +118,15 @@ func TestBitmapSet(t *testing.T) {
 }
 
 func TestBitmapSetWithCollision(t *testing.T) {
+	t.Parallel()
+
 	var c node
-	c = &bitmasked{values: []node{}}
+	c = &bitmasked{
+		level:      0,
+		valueMap:   0,
+		subMapsMap: 0,
+		values:     []node{},
+	}
 
 	c = c.set(newKey("key_1", 1<<63), "hello")
 	c = c.set(newKey("key_2", 1<<63|1<<47), "world")
@@ -117,6 +145,8 @@ func TestBitmapSetWithCollision(t *testing.T) {
 }
 
 func TestPartition(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		hash  uint64
 		level uint8
@@ -145,13 +175,19 @@ func TestPartition(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := partition(tt.hash, tt.level)
-		if got != tt.want {
-			t.Errorf("partition(%064b, %d) = %064b; want %064b", tt.hash, tt.level, got, tt.want)
-		}
+		t.Run(fmt.Sprintf("hash %d", tt.hash), func(t *testing.T) {
+			t.Parallel()
+
+			got := partition(tt.hash, tt.level)
+			if got != tt.want {
+				t.Errorf("partition(%064b, %d) = %064b; want %064b", tt.hash, tt.level, got, tt.want)
+			}
+		})
 	}
 }
 func TestPartitionMask(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		level uint8
 		want  uint64
@@ -203,19 +239,35 @@ func TestPartitionMask(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := partitionMask(tt.level)
-		if got != tt.want {
-			t.Errorf("partitionMask(%d) = %064b; want %064b", tt.level, got, tt.want)
-		}
+		t.Run(fmt.Sprintf("level %d", tt.level), func(t *testing.T) {
+			t.Parallel()
+
+			got := partitionMask(tt.level)
+			if got != tt.want {
+				t.Errorf("partitionMask(%d) = %064b; want %064b", tt.level, got, tt.want)
+			}
+		})
 	}
 }
 
 func TestBitmapCopy(t *testing.T) {
+	t.Parallel()
+
 	b := &bitmasked{
 		level:      0,
 		valueMap:   0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
 		subMapsMap: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-		values:     []node{&bitmasked{level: 1}, &bitmasked{level: 2}},
+		values: []node{&bitmasked{
+			level:      1,
+			valueMap:   0,
+			subMapsMap: 0,
+			values:     nil,
+		}, &bitmasked{
+			level:      2,
+			valueMap:   0,
+			subMapsMap: 0,
+			values:     nil,
+		}},
 	}
 
 	newB := b.copy().(*bitmasked)

@@ -1,0 +1,17 @@
+version: "2"
+linters:
+  default: all
+  disable:
+    - varnamelen
+    - testpackage
+    - revive
+    - ireturn
+    - gocritic
+    - gocognit
+    - gochecknoglobals
+    - funlen
+    - forcetypeassert
+    - exhaustive
+    - err113
+    - depguard
+    - cyclop

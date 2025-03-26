@@ -1,16 +1,18 @@
-package maps
+package jsonchamp
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"testing"
 )
 
 func TestHeterogeneousMap_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		d []byte
 	}
+
 	tests := []struct {
 		name     string
 		args     args
@@ -94,11 +96,15 @@ func TestHeterogeneousMap_UnmarshalJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			actual := New()
+
 			err := json.Unmarshal(tt.args.d, &actual)
 			if tt.wantErr != (err != nil) {
 				t.Fatalf("expected error %v, got %v", tt.wantErr, err)
 			}
+
 			if !actual.Equals(tt.expected) {
 				actMap := actual.ToMap()
 				expMap := tt.expected.ToMap()
@@ -111,6 +117,8 @@ func TestHeterogeneousMap_UnmarshalJSON(t *testing.T) {
 }
 
 func TestHeterogeneousMap_MarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		m       *Map
@@ -156,11 +164,15 @@ func TestHeterogeneousMap_MarshalJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tt.m.MarshalJSON()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			gotString := string(got)
 			if gotString != tt.want {
 				t.Errorf("MarshalJSON() got = %v, want %v", gotString, tt.want)
@@ -170,6 +182,8 @@ func TestHeterogeneousMap_MarshalJSON(t *testing.T) {
 }
 
 func TestDeepJSONStructure(t *testing.T) {
+	t.Parallel()
+
 	deepRaw := `
 {
 	"items": {
@@ -190,7 +204,9 @@ func TestDeepJSONStructure(t *testing.T) {
 		{ "key": "value3" }
 	]
 }`
+
 	var deep *Map
+
 	err := json.Unmarshal([]byte(deepRaw), &deep)
 	if err != nil {
 		t.Fatal(err)
@@ -205,11 +221,17 @@ func TestDeepJSONStructure(t *testing.T) {
 	result := deep.Set("items", items)
 	result = result.Set("array", []any{"value1", "value2", "value3"})
 
-	deepMap := deep.ToMap()
-	fmt.Printf("%+v", deepMap)
+	diff, err := deep.Diff(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("diff: %v", diff.ToMap())
 }
 
 func TestMaxInt64(t *testing.T) {
+	t.Parallel()
+
 	j := `{"max":9223372036854775807}`
 	m := New()
 

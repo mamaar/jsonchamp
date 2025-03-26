@@ -1,12 +1,14 @@
-package maps
+package jsonchamp
 
 import (
 	"testing"
 )
 
 func TestValueGet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
-		setup func() *value
+		setup func() value
 
 		key uint64
 
@@ -14,16 +16,16 @@ func TestValueGet(t *testing.T) {
 		expectedOk    bool
 	}{
 		{
-			setup: func() *value {
-				return &value{key: newKey("key", 1), value: "hello"}
+			setup: func() value {
+				return value{key: newKey("key", 1), value: "hello"}
 			},
 			key:           1,
 			expectedOk:    true,
 			expectedValue: "hello",
 		},
 		{
-			setup: func() *value {
-				return &value{key: newKey("key", 1), value: "world"}
+			setup: func() value {
+				return value{key: newKey("key", 1), value: "world"}
 			},
 			key:           2,
 			expectedOk:    false,
@@ -42,13 +44,13 @@ func TestValueGet(t *testing.T) {
 		if tt.expectedOk && got != tt.expectedValue {
 			t.Errorf("get(%v) = %v; want %v", tt.key, got, tt.expectedValue)
 		}
-
 	}
 }
 
 func TestValueSet(t *testing.T) {
+	t.Parallel()
 
-	var v node = &value{key: newKey("key", 1<<63), value: "hello"}
+	var v node = value{key: newKey("key", 1<<63), value: "hello"}
 	v = v.set(newKey("key", 1<<63), "world")
 
 	world, ok := v.get(newKey("key", 1<<63))
@@ -62,7 +64,12 @@ func TestValueSet(t *testing.T) {
 }
 
 func TestValueSetWithCollision(t *testing.T) {
-	v := &value{key: newKey("key", 1)}
+	t.Parallel()
+
+	v := value{
+		key:   newKey("key", 1),
+		value: nil,
+	}
 
 	n := v.set(newKey("something", 1), "hello")
 

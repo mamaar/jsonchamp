@@ -1,4 +1,4 @@
-package maps
+package jsonchamp
 
 import (
 	"fmt"
@@ -6,7 +6,10 @@ import (
 )
 
 var (
-	mapType = reflect.TypeOf(&Map{})
+	mapType = reflect.TypeOf(&Map{
+		root:   nil,
+		hasher: nil,
+	})
 )
 
 func normalizeSlice(in any) []any {
@@ -14,14 +17,8 @@ func normalizeSlice(in any) []any {
 		return []any{}
 	}
 
-	elem := reflect.TypeOf(in).Elem()
-
-	if elem.Kind() == reflect.Interface {
-		return in.([]any)
-	}
-
-	var result []any
-	for i := 0; i < reflect.ValueOf(in).Len(); i++ {
+	result := make([]any, 0, reflect.ValueOf(in).Len())
+	for i := range reflect.ValueOf(in).Len() {
 		result = append(result, reflect.ValueOf(in).Index(i).Interface())
 	}
 
@@ -30,6 +27,7 @@ func normalizeSlice(in any) []any {
 
 func normalizeNativeMap(in map[string]any) map[string]any {
 	out := make(map[string]any, len(in))
+
 	for k, v := range in {
 		switch t := v.(type) {
 		case map[string]any:
@@ -39,11 +37,13 @@ func normalizeNativeMap(in map[string]any) map[string]any {
 			for _, m := range t {
 				arr = append(arr, normalizeValue(m))
 			}
+
 			out[k] = arr
 		default:
 			out[k] = normalizeValue(t)
 		}
 	}
+
 	return out
 }
 
@@ -51,6 +51,7 @@ func normalizeValue(in any) any {
 	if in == nil {
 		return nil
 	}
+
 	t := reflect.TypeOf(in)
 	switch t.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -60,11 +61,26 @@ func normalizeValue(in any) any {
 	case reflect.Slice:
 		return normalizeSlice(in)
 	case reflect.String:
-		return in.(string)
+		stringed, ok := in.(string)
+		if !ok {
+			panic("could not cast to string")
+		}
+
+		return stringed
 	case mapType.Kind():
-		return in.(*Map)
+		casted, ok := in.(*Map)
+		if !ok {
+			panic("could not cast to *Map")
+		}
+
+		return casted
 	case reflect.Map:
-		return normalizeNativeMap(in.(map[string]any))
+		mapped, ok := in.(map[string]any)
+		if !ok {
+			panic("could not cast to map[string]any")
+		}
+
+		return normalizeNativeMap(mapped)
 	default:
 		panic(fmt.Sprintf("unsupported type to normalize %v", t))
 	}
@@ -84,12 +100,16 @@ func diffMap(m *Map, other *Map) *Map {
 	for _, k := range unionKeys {
 		oneValue, oneExists := m.Get(k)
 		otherValue, otherExists := other.Get(k)
+
 		if oneExists && !otherExists {
 			diff = diff.Set(k, nil)
+
 			continue
 		}
+
 		if !oneExists && otherExists {
 			diff = diff.Set(k, otherValue)
+
 			continue
 		}
 
@@ -98,12 +118,15 @@ func diffMap(m *Map, other *Map) *Map {
 
 		if reflect.TypeOf(oneValue) != reflect.TypeOf(otherValue) {
 			diff = diff.Set(k, otherValue)
+
 			continue
 		}
+
 		oneValue, otherValue = toLargestType(oneValue), toLargestType(otherValue)
 		switch oneValue.(type) {
 		case *Map:
 			oneMap, otherMap := castPair[*Map](oneValue, otherValue)
+
 			subDiff := diffMap(oneMap, otherMap)
 			if len(subDiff.Keys()) > 0 {
 				diff = diff.Set(k, subDiff)
@@ -125,7 +148,8 @@ func diffMap(m *Map, other *Map) *Map {
 			}
 		case []any:
 			oneSlice, otherSlice := castPair[[]any](oneValue, otherValue)
-			slicesAreEqual := EqualsAnyList(oneSlice, otherSlice)
+			slicesAreEqual := equalsAnyList(oneSlice, otherSlice)
+
 			if !slicesAreEqual {
 				diff = diff.Set(k, otherSlice)
 			}

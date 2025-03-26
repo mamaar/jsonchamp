@@ -1,4 +1,4 @@
-package maps
+package jsonchamp
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 )
 
 func TestMapSet(t *testing.T) {
+	t.Parallel()
 
 	f := New()
 
@@ -19,14 +20,16 @@ func TestMapSet(t *testing.T) {
 	if !isEqual {
 		t.Fatalf("have %v, want %v", fWithName, expected)
 	}
-
 }
 
 func TestMapEquals(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		f     *Map
 		other *Map
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -139,6 +142,8 @@ func TestMapEquals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tt.args.f.Equals(tt.args.other); got != tt.want {
 				diff, _ := tt.args.f.Diff(tt.args.other)
 				t.Errorf("Equals() = %v, want %v", got, tt.want)
@@ -149,6 +154,8 @@ func TestMapEquals(t *testing.T) {
 }
 
 func TestNewFromItems(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		items   []any
@@ -170,6 +177,8 @@ func TestNewFromItems(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			fromItems := NewFromItems(tt.items...)
 			if !fromItems.Equals(tt.want) {
 				t.Errorf("got %v, want %v", fromItems, tt.want)
@@ -179,10 +188,13 @@ func TestNewFromItems(t *testing.T) {
 }
 
 func TestDiff(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		one   *Map
 		other *Map
 	}
+
 	tests := []struct {
 		name            string
 		args            args
@@ -246,6 +258,8 @@ func TestDiff(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			one := tt.args.one
 			other := tt.args.other
 
@@ -253,9 +267,11 @@ func TestDiff(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if tt.expectedHasDiff && !diff.Equals(tt.wantDiff) {
 				t.Errorf("expected equality: %v", tt.expectedHasDiff)
 			}
+
 			if !diff.Equals(tt.wantDiff) {
 				t.Errorf("expected diff: %v, got: %v", tt.wantDiff, diff)
 			}
@@ -264,6 +280,8 @@ func TestDiff(t *testing.T) {
 }
 
 func TestDiffMapNoNested(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		first         *Map
@@ -296,16 +314,21 @@ func TestDiffMapNoNested(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			diff, err := tt.first.Diff(tt.second)
 			if !errors.Is(err, tt.expectedError) {
 				t.Fatalf("expected error: %v, got: %v", tt.expectedError, err)
 			}
+
 			if tt.expectedError != nil {
 				return
 			}
+
 			if !diff.Equals(tt.diff) {
 				t.Fatalf("expected diff: %v, got: %v", tt.diff, diff)
 			}
+
 			if !errors.Is(err, tt.expectedError) {
 				t.Fatalf("expected error: %v, got: %v", tt.expectedError, err)
 			}
@@ -314,6 +337,8 @@ func TestDiffMapNoNested(t *testing.T) {
 }
 
 func TestDiffMapNested(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		first         *Map
@@ -346,17 +371,22 @@ func TestDiffMapNested(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			diff, err := tt.first.Diff(tt.second)
 
 			if !errors.Is(err, tt.expectedError) {
 				t.Fatalf("expected error: %v, got: %v", tt.expectedError, err)
 			}
+
 			if tt.expectedError != nil {
 				return
 			}
+
 			if !diff.Equals(tt.diff) {
 				t.Errorf("expected diff: %v, got: %v", tt.diff, diff)
 			}
+
 			if !errors.Is(err, tt.expectedError) {
 				t.Errorf("expected error: %v, got: %v", tt.expectedError, err)
 			}
@@ -365,10 +395,13 @@ func TestDiffMapNested(t *testing.T) {
 }
 
 func TestIntersection(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		one   []string
 		other []string
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -401,10 +434,13 @@ func TestIntersection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := intersection(tt.args.one, tt.args.other)
 			if len(got) != len(tt.want) {
 				t.Fatalf("have %v, want %v", got, tt.want)
 			}
+
 			for i := range got {
 				if got[i] != tt.want[i] {
 					t.Fatalf("have %v, want %v", got, tt.want)
@@ -415,10 +451,13 @@ func TestIntersection(t *testing.T) {
 }
 
 func TestMerge(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		current *Map
 		diff    *Map
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -459,6 +498,8 @@ func TestMerge(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := tt.args.current.Merge(tt.args.diff)
 			if !got.Equals(tt.want) {
 				t.Errorf("Merge() = %v, want %v", got, tt.want)
@@ -468,10 +509,13 @@ func TestMerge(t *testing.T) {
 }
 
 func TestHavePathInCommon(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		a *Map
 		b *Map
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -520,6 +564,8 @@ func TestHavePathInCommon(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := havePathInCommon(tt.args.a, tt.args.b); got != tt.want {
 				t.Errorf("havePathInCommon() = %v, want %v", got, tt.want)
 			}
@@ -527,47 +573,9 @@ func TestHavePathInCommon(t *testing.T) {
 	}
 }
 
-func TestRefToLookup(t *testing.T) {
-	type args struct {
-		ref *Map
-	}
-	tests := []struct {
-		name string
-		args args
-		want []string
-	}{
-		{
-			name: "empty ref",
-			args: args{
-				ref: New(),
-			},
-			want: []string{},
-		},
-		{
-			name: "simple ref",
-			args: args{
-				ref: NewFromItems("$ref", "#/property"),
-			},
-			want: []string{"property"},
-		},
-		{
-			name: "nested ref",
-			args: args{
-				ref: NewFromItems("$ref", "#/property/nested"),
-			},
-			want: []string{"property", "nested"},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := refToLookup(tt.args.ref); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("refToLookup() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestGet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		f        *Map
@@ -589,8 +597,11 @@ func TestGet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, ok := tt.f.Get(tt.key)
 			expected := normalizeValue(tt.expected)
+
 			if !ok || !reflect.DeepEqual(got, expected) {
 				t.Errorf("get() = %v, want %v", got, expected)
 			}

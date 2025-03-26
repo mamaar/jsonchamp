@@ -1,4 +1,4 @@
-package maps
+package jsonchamp
 
 import (
 	"encoding/json"
@@ -17,7 +17,11 @@ type testFeature struct {
 }
 
 func TestConvertToStruct(t *testing.T) {
+	t.Parallel()
+
+	//nolint: lll
 	const data = `{"fieldExcludedFromJson": "fieldExcludedFromJson",    "fieldIncludedInJson": "fieldIncludedInJson",    "attributes": {       "array": [1, 2, 3],       "attributeIncludedInJson": "attributeIncludedInJson",       "attributeThatIsInt64": 123453153,       "attributeThatIsMaxInt64": 9223372036854775807,       "attributeOutsideJson": "attributeOutsideJson",       "anotherAttributeOutsideJson": "anotherAttributeOutsideJson",       "nestedAttribute": {          "integer": 123       }    },    "geometry": {       "x": 129494214.0,       "y": 12412421.1    }}`
+
 	var m *Map
 	if err := json.Unmarshal([]byte(data), &m); err != nil {
 		t.Fatal(err)
@@ -27,6 +31,7 @@ func TestConvertToStruct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	f.Attributes.NestedAttribute.Integer = 666
 
 	featureMap, err := From(f)
@@ -40,6 +45,8 @@ func TestConvertToStruct(t *testing.T) {
 }
 
 func Test_bestEffortJsonName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		in   string
@@ -53,15 +60,20 @@ func Test_bestEffortJsonName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := bestEffortJsonName(tt.in); got != tt.want {
-				t.Errorf("bestEffortJsonName() = %v, want %v", got, tt.want)
+			t.Parallel()
+
+			if got := bestEffortJSONName(tt.in); got != tt.want {
+				t.Errorf("bestEffortJSONName() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestToStruct(t *testing.T) {
+	t.Parallel()
+
 	m := NewFromItems("a", 1, "b", 2, "c", 3)
+
 	type testStruct struct {
 		A int
 		B int
@@ -69,6 +81,7 @@ func TestToStruct(t *testing.T) {
 	}
 
 	var s testStruct
+
 	err := ToStruct(m, &s)
 	if err != nil {
 		t.Fatal(err)
@@ -77,21 +90,27 @@ func TestToStruct(t *testing.T) {
 	if s.A != 1 {
 		t.Errorf("expected 1, got %d", s.A)
 	}
+
 	if s.B != 2 {
 		t.Errorf("expected 2, got %d", s.B)
 	}
+
 	if s.S != 3 {
 		t.Errorf("expected 3, got %d", s.S)
 	}
 }
 
 func TestToStructWithMoreCoverage(t *testing.T) {
+	t.Parallel()
+
 	m := NewFromItems("a", nil)
 
 	type testStruct struct {
 		A string `champ:"a"`
 	}
+
 	var s testStruct
+
 	err := ToStruct(m, &s)
 	if err != nil {
 		t.Fatal(err)
@@ -101,6 +120,8 @@ func TestToStructWithMoreCoverage(t *testing.T) {
 }
 
 func TestToNativeMap(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		in   *Map
@@ -125,8 +146,11 @@ func TestToNativeMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := ToNativeMap(tt.in)
 			want := normalizeNativeMap(tt.want)
+
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("ToNativeMap() = %v, want %v", got, want)
 			}
@@ -135,6 +159,8 @@ func TestToNativeMap(t *testing.T) {
 }
 
 func TestFromNativeMap(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		in   map[string]any
@@ -159,6 +185,8 @@ func TestFromNativeMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := FromNativeMap(tt.in)
 
 			if diff, _ := got.Diff(tt.want); len(diff.Keys()) > 0 {

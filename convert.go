@@ -1,7 +1,8 @@
-package maps
+package jsonchamp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"unicode"
@@ -38,17 +39,20 @@ func From[T any](f T) (*Map, error) {
 	return m, nil
 }
 
-// bestEffortJsonName converts a string to a string that can be used as a JSON key.
+// bestEffortJSONName converts a string to a string that can be used as a JSON key.
 // It is best effort because we don't know the naming convention the user wants to use.
 // We use snake_case as a best effort.
-func bestEffortJsonName(n string) string {
+func bestEffortJSONName(n string) string {
 	snakeCased := ""
+
 	for i, r := range n {
 		if i > 0 && r >= 'A' && r <= 'Z' {
 			snakeCased += "_"
 		}
+
 		snakeCased += string(unicode.ToLower(r))
 	}
+
 	return snakeCased
 }
 
@@ -66,11 +70,12 @@ func ToStruct(m *Map, out any) error {
 	}
 
 	numFields := structValue.NumField()
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		fieldType := structType.Field(i)
 		champName := fieldType.Tag.Get("champ")
+
 		if champName == "" {
-			champName = bestEffortJsonName(fieldType.Name)
+			champName = bestEffortJSONName(fieldType.Name)
 		}
 
 		mapVal, ok := m.Get(champName)
@@ -109,25 +114,42 @@ func ToStruct(m *Map, out any) error {
 		case reflect.Float64:
 			structValue.Field(i).Set(reflect.ValueOf(mapVal).Convert(reflect.TypeOf(float64(0))))
 		case reflect.String:
-			structValue.Field(i).SetString(mapVal.(string))
+			stringed, ok := mapVal.(string)
+			if !ok {
+				return fmt.Errorf("expected field %s to be a string, got %T", champName, mapVal)
+			}
+
+			structValue.Field(i).SetString(stringed)
 		case reflect.Struct:
-			err := ToStruct(mapVal.(*Map), structValue.Field(i).Addr().Interface())
+			mapValTyped, ok := mapVal.(*Map)
+			if !ok {
+				return fmt.Errorf("expected field %s to be a map, got %T", champName, mapVal)
+			}
+
+			err := ToStruct(mapValTyped, structValue.Field(i).Addr().Interface())
 			if err != nil {
 				return fmt.Errorf("failed to convert map to struct: %w", err)
 			}
 		case reflect.Bool:
-			structValue.Field(i).SetBool(mapVal.(bool))
+			booled, ok := mapVal.(bool)
+			if !ok {
+				return fmt.Errorf("expected field %s to be a bool, got %T", champName, mapVal)
+			}
+
+			structValue.Field(i).SetBool(booled)
 		case reflect.Slice:
 			slice := reflect.ValueOf(mapVal)
 			if slice.Len() == 0 {
 				structValue.Field(i).Set(reflect.Zero(fieldType.Type))
+
 				continue
 			}
+
 			structValue.Field(i).Set(reflect.ValueOf(mapVal))
 		case reflect.Map:
-			return fmt.Errorf("map fields are not supported. use a struct instead")
+			return errors.New("map fields are not supported. use a struct instead")
 		case reflect.Ptr:
-			return fmt.Errorf("pointer fields are not supported")
+			return errors.New("pointer fields are not supported")
 		default:
 			return fmt.Errorf("unsupported type: %v", fieldType.Type.Kind())
 		}
@@ -136,8 +158,10 @@ func ToStruct(m *Map, out any) error {
 	return nil
 }
 
+// FromNativeMap converts a native map to a jsonchamp Map.
 func FromNativeMap(in map[string]any) *Map {
 	res := New()
+
 	for k, v := range in {
 		switch t := v.(type) {
 		case map[string]any:
@@ -147,16 +171,19 @@ func FromNativeMap(in map[string]any) *Map {
 			for _, m := range t {
 				arr = append(arr, FromNativeMap(m))
 			}
+
 			res = res.Set(k, arr)
 		default:
 			res = res.Set(k, v)
 		}
 	}
+
 	return res
 }
 
 func toNativeSlice(in []any) []any {
 	var res []any
+
 	for _, v := range in {
 		switch t := v.(type) {
 		case map[string]any:
@@ -169,24 +196,27 @@ func toNativeSlice(in []any) []any {
 			res = append(res, v)
 		}
 	}
+
 	return res
 }
 
+// ToNativeMap converts a jsonchamp Map to a native map.
 func ToNativeMap(in *Map) map[string]any {
 	res := make(map[string]any)
+
 	for _, k := range in.Keys() {
 		v, _ := in.Get(k)
 		switch reflect.TypeOf(v).Kind() {
-		case reflect.Map:
-			res[k] = ToNativeMap(v.(*Map))
 		case reflect.Slice:
 			sl := toNativeSlice(normalizeSlice(v))
 			res[k] = sl
 		case mapType.Kind():
-			res[k] = ToNativeMap(v.(*Map))
+			m, _ := v.(*Map)
+			res[k] = ToNativeMap(m)
 		default:
 			res[k] = v
 		}
 	}
+
 	return res
 }

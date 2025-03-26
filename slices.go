@@ -1,4 +1,4 @@
-package maps
+package jsonchamp
 
 import (
 	"fmt"
@@ -9,37 +9,43 @@ import (
 	"gonum.org/v1/gonum/floats/scalar"
 )
 
-type ComparableMap[T any] interface {
-	Equals(other T) bool
-}
+const (
+	floatCompareTolerance = 0.0001
+)
 
-func EqualsAnyList(a []any, b []any) bool {
+func equalsAnyList(a []any, b []any) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	if len(a) == 0 && len(b) == 0 {
 		return true
 	}
+
 	for i := range a {
-		if !EqualsAny(a[i], b[i]) {
+		if !equalsAny(a[i], b[i]) {
 			return false
 		}
 	}
+
 	return true
 }
 
-func EqualsStringList(a []string, b []string) bool {
+func equalsStringList(a []string, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	if len(a) == 0 && len(b) == 0 {
 		return true
 	}
+
 	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -74,31 +80,100 @@ func toLargestType(a any) any {
 	}
 }
 
-func EqualsAny(a any, b any) bool {
+func equalsAny(a any, b any) bool {
 	a = toLargestType(a)
 	b = toLargestType(b)
+
 	if reflect.TypeOf(a) != reflect.TypeOf(b) {
 		return false
 	}
+
 	switch v := a.(type) {
 	case string:
-		stringEquals := a.(string) == b.(string)
+		aString, ok := a.(string)
+		if !ok {
+			return false
+		}
+
+		bString, ok := b.(string)
+		if !ok {
+			return false
+		}
+
+		stringEquals := aString == bString
+
 		return stringEquals
 	case int64:
-		int64Equals := a.(int64) == b.(int64)
+		aInt64, ok := a.(int64)
+		if !ok {
+			return false
+		}
+
+		bInt64, ok := b.(int64)
+		if !ok {
+			return false
+		}
+
+		int64Equals := aInt64 == bInt64
+
 		return int64Equals
 	case float64:
-		floatEquals := scalar.EqualWithinAbs(a.(float64), b.(float64), 0.0001)
+		aFloat, ok := a.(float64)
+		if !ok {
+			return false
+		}
+
+		bFloat, ok := b.(float64)
+		if !ok {
+			return false
+		}
+
+		floatEquals := scalar.EqualWithinAbs(aFloat, bFloat, floatCompareTolerance)
+
 		return floatEquals
 	case *Map:
-		bTyped := b.(*Map)
+		bTyped, ok := b.(*Map)
+		if !ok {
+			return false
+		}
+
 		return v.Equals(bTyped)
 	case []any:
-		return EqualsAnyList(a.([]any), b.([]any))
+		aSlice, ok := a.([]any)
+		if !ok {
+			return false
+		}
+
+		bSlice, ok := b.([]any)
+		if !ok {
+			return false
+		}
+
+		return equalsAnyList(aSlice, bSlice)
 	case []string:
-		return EqualsStringList(a.([]string), b.([]string))
+		aSlice, ok := a.([]string)
+		if !ok {
+			return false
+		}
+
+		bSlice, ok := b.([]string)
+		if !ok {
+			return false
+		}
+
+		return equalsStringList(aSlice, bSlice)
 	case bool:
-		return a.(bool) == b.(bool)
+		aBool, ok := a.(bool)
+		if !ok {
+			return false
+		}
+
+		bBool, ok := b.(bool)
+		if !ok {
+			return false
+		}
+
+		return aBool == bBool
 	case nil:
 		return a == nil && b == nil
 	default:
@@ -111,15 +186,19 @@ func union(one []string, other []string) []string {
 	for _, k := range one {
 		keyMap[k] = struct{}{}
 	}
+
 	for _, k := range other {
 		keyMap[k] = struct{}{}
 	}
+
 	keyIter := maps.Keys(keyMap)
+
 	return slices.Collect(keyIter)
 }
 
 func intersection(one []string, other []string) []string {
 	var intersections []string
+
 	for _, k := range one {
 		for _, j := range other {
 			if k == j {
@@ -127,5 +206,6 @@ func intersection(one []string, other []string) []string {
 			}
 		}
 	}
+
 	return intersections
 }
