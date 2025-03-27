@@ -297,17 +297,16 @@ func (m *Map) GetInt(key string) (int64, error) {
 // Set implements node.
 func (m *Map) Set(key string, value any) *Map {
 	value = normalizeValue(value)
-	n := m.Copy()
-	h := n.hash(key)
+	h := m.hash(key)
 
-	newRoot, ok := n.root.set(newKey(key, h), value).(*bitmasked)
+	newRoot, ok := m.root.set(newKey(key, h), value).(*bitmasked)
 	if !ok {
 		panic("expected bitmasked")
 	}
 
-	n.root = newRoot
+	m.root = newRoot
 
-	return n
+	return m
 }
 
 // Keys returns a list of all keys in the map.

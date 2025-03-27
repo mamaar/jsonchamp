@@ -1,6 +1,7 @@
 package jsonchamp
 
 import (
+	"crypto/rand"
 	"fmt"
 	"hash"
 	"hash/fnv"
@@ -78,9 +79,9 @@ func BenchmarkGet(b *testing.B) {
 
 func TestBench(t *testing.T) {
 	m := New()
-	for i := range 1_000 {
-		k := fmt.Sprintf("%d", i)
-		m = m.Set(k, i)
+	for range 1000_000 {
+		k := rand.Text()
+		m = m.Set(k, k)
 
 		_, ok := m.Get(k)
 		if !ok {
