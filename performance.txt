@@ -1,0 +1,26 @@
+goos: linux
+goarch: amd64
+pkg: github.com/mamaar/jsonchamp
+cpu: AMD Ryzen 9 3900X 12-Core Processor            
+BenchmarkSet/fnv64/short-24         	  603361	      2186 ns/op
+BenchmarkSet/maphash/short-24       	  600115	      2888 ns/op
+BenchmarkSet/fnv64/medium-24        	  594920	      2150 ns/op
+BenchmarkSet/maphash/medium-24      	  611604	      2823 ns/op
+BenchmarkSet/fnv64/long-24          	  607922	      2137 ns/op
+BenchmarkSet/maphash/long-24        	  603496	      2890 ns/op
+BenchmarkSet/fnv64/huge-24          	  527782	      2224 ns/op
+BenchmarkSet/maphash/huge-24        	  528810	      2584 ns/op
+BenchmarkSet/fnv64/massive-24       	  355258	      3588 ns/op
+BenchmarkSet/maphash/massive-24     	  501534	      2995 ns/op
+BenchmarkGet/fnv64/short-24         	 3557902	       383.1 ns/op
+BenchmarkGet/maphash/short-24       	 2238099	       602.1 ns/op
+BenchmarkGet/fnv64/medium-24        	 3376591	       380.8 ns/op
+BenchmarkGet/maphash/medium-24      	 2140186	       635.8 ns/op
+BenchmarkGet/fnv64/long-24          	 3378933	       389.5 ns/op
+BenchmarkGet/maphash/long-24        	 2171746	       627.0 ns/op
+BenchmarkGet/fnv64/huge-24          	 2140963	       596.7 ns/op
+BenchmarkGet/maphash/huge-24        	 1591778	       802.6 ns/op
+BenchmarkGet/fnv64/massive-24       	  653577	      2118 ns/op
+BenchmarkGet/maphash/massive-24     	 1000000	      1609 ns/op
+PASS
+ok  	github.com/mamaar/jsonchamp	113.953s
