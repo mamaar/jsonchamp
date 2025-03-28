@@ -12,14 +12,14 @@ import (
 )
 
 var benchTable = []struct {
-	name      string
-	keyLength int
+	name string
+	key  string
 }{
-	{"short", 8},
-	{"medium", 16},
-	{"long", 24},
-	{"huge", 128},
-	{"massive", 1024},
+	{"short", strings.Repeat("a", 8)},
+	{"medium", strings.Repeat("a", 16)},
+	{"long", strings.Repeat("a", 24)},
+	{"huge", strings.Repeat("a", 128)},
+	{"massive", strings.Repeat("a", 1024)},
 }
 
 var hasherTable = []struct {
@@ -36,10 +36,8 @@ func BenchmarkSet(b *testing.B) {
 			b.Run(fmt.Sprintf("%s/%s", hasherTT.name, keyLenTT.name), func(b *testing.B) {
 				m := New(WithHasher(hasherTT.hasher))
 
-				key := strings.Repeat("a", keyLenTT.keyLength)
-
 				for i := range b.N {
-					m = m.Set(fmt.Sprintf("%s%d", key, i), key)
+					m = m.Set(fmt.Sprintf("%s%d", keyLenTT.key, i), keyLenTT.key)
 				}
 			})
 		}
@@ -52,24 +50,23 @@ func BenchmarkGet(b *testing.B) {
 			b.Run(fmt.Sprintf("%s/%s", hasherTT.name, keyLenTT.name), func(b *testing.B) {
 				m := New(WithHasher(hasherTT.hasher))
 
-				key := strings.Repeat("a", keyLenTT.keyLength)
-
 				for i := range b.N {
-					m = m.Set(fmt.Sprintf("%s%d", key, i), key)
+					m = m.Set(fmt.Sprintf("%s%d", keyLenTT.key, i), keyLenTT.key)
 				}
 
 				b.ResetTimer()
 
 				for i := range b.N {
 					iStr := strconv.Itoa(i)
-					k := key + iStr
+					k := keyLenTT.key + iStr
+
 					v, ok := m.Get(k)
 					if !ok {
 						panic(fmt.Sprintf("expected key %s to be in map", k))
 					}
 
-					if v != key {
-						panic(fmt.Sprintf("expected %s, got %s", key, v))
+					if v != keyLenTT.key {
+						panic(fmt.Sprintf("expected %s, got %s", keyLenTT.key, v))
 					}
 				}
 			})
@@ -78,7 +75,10 @@ func BenchmarkGet(b *testing.B) {
 }
 
 func TestBench(t *testing.T) {
+	t.Parallel()
+
 	m := New()
+
 	for range 1000_000 {
 		k := rand.Text()
 		m = m.Set(k, k)

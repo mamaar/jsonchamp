@@ -138,7 +138,7 @@ func (b *bitmasked) set(key key, newValue any) node {
 		}
 		// If it's the same key, we can just update the value.
 		if existingValue.key.hash == key.hash && existingValue.key.key == key.key {
-			newValues := make([]node, len(b.values), len(b.values))
+			newValues := make([]node, len(b.values))
 			copy(newValues, b.values)
 			newValues[valueIdx] = value{key: key, value: newValue}
 
@@ -152,7 +152,7 @@ func (b *bitmasked) set(key key, newValue any) node {
 
 		// If it's a different key, we need to handle the collision
 
-		newValues := make([]node, len(b.values), len(b.values))
+		newValues := make([]node, len(b.values))
 		copy(newValues, b.values)
 		newValues[valueIdx] = b.mergeValueToSubNode(b.level+1, existingValue.key, existingValue.value, key, newValue)
 
@@ -173,7 +173,7 @@ func (b *bitmasked) set(key key, newValue any) node {
 			panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, b.values[subNodeIndex]))
 		}
 
-		newValues := make([]node, len(b.values), len(b.values))
+		newValues := make([]node, len(b.values))
 		copy(newValues, b.values)
 
 		newValues[subNodeIndex] = subNode.set(key, newValue)
@@ -188,7 +188,7 @@ func (b *bitmasked) set(key key, newValue any) node {
 
 	newValueIndex := b.index(pos)
 
-	copiedValues := make([]node, len(b.values), len(b.values))
+	copiedValues := make([]node, len(b.values))
 	copy(copiedValues, b.values)
 
 	var before []node
@@ -219,7 +219,7 @@ func (b *bitmasked) set(key key, newValue any) node {
 }
 
 func (b *bitmasked) copy() node {
-	newValues := make([]node, len(b.values), len(b.values))
+	newValues := make([]node, len(b.values))
 
 	for i, v := range b.values {
 		newValues[i] = v.copy()

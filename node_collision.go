@@ -5,7 +5,7 @@ type collision struct {
 }
 
 func (c *collision) copy() node {
-	newValues := make([]value, len(c.values), len(c.values))
+	newValues := make([]value, len(c.values))
 	for i, v := range c.values {
 		newValues[i] = value{
 			key:   v.key,
@@ -30,29 +30,23 @@ func (c *collision) get(key key) (any, bool) {
 // Set implements node.
 func (c *collision) set(key key, newValue any) node {
 	newCollision := make([]value, len(c.values), len(c.values)+1)
+	copy(newCollision, c.values)
 
-	found := false
 	for i, v := range c.values {
 		if v.key == key {
 			newCollision[i] = value{
 				key:   key,
 				value: newValue,
 			}
-			found = true
-		} else {
-			newCollision[i] = value{
-				key:   v.key,
-				value: v.value,
-			}
+
+			return &collision{values: newCollision}
 		}
 	}
 
-	if !found {
-		newCollision = append(newCollision, value{
-			key:   key,
-			value: newValue,
-		})
-	}
+	newCollision = append(newCollision, value{
+		key:   key,
+		value: newValue,
+	})
 
 	return &collision{values: newCollision}
 }
