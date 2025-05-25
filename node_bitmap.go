@@ -49,7 +49,7 @@ func (b *bitmasked) keys() []string {
 
 	for _, v := range b.values {
 		switch value := v.(type) {
-		case value:
+		case *value:
 			keys = append(keys, value.key.key)
 		case *collision:
 			for _, v := range value.values {
@@ -95,15 +95,17 @@ func (b *bitmasked) mergeValueToSubNode(newLevel uint8, keyA key, valueA any, ke
 	posA := bitPosition(keyA.hash, newLevel)
 	posB := bitPosition(keyB.hash, newLevel)
 
+	values := make([]node, 0, 5)
+
 	// Collides on next level
 	if posA == posB {
 		return &bitmasked{
 			level:      newLevel,
 			valueMap:   0,
 			subMapsMap: posA,
-			values: []node{
+			values: append(values,
 				b.mergeValueToSubNode(newLevel+1, keyA, valueA, keyB, valueB),
-			},
+			),
 		}
 	}
 
@@ -112,7 +114,7 @@ func (b *bitmasked) mergeValueToSubNode(newLevel uint8, keyA key, valueA any, ke
 			level:      newLevel,
 			valueMap:   posA | posB,
 			subMapsMap: 0,
-			values:     []node{value{key: keyA, value: valueA}, value{key: keyB, value: valueB}},
+			values:     append(values, &value{key: keyA, value: valueA}, &value{key: keyB, value: valueB}),
 		}
 	}
 
@@ -120,77 +122,64 @@ func (b *bitmasked) mergeValueToSubNode(newLevel uint8, keyA key, valueA any, ke
 		level:      newLevel,
 		valueMap:   posA | posB,
 		subMapsMap: 0,
-		values:     []node{value{key: keyB, value: valueB}, value{key: keyA, value: valueA}},
+		values:     append(values, &value{key: keyB, value: valueB}, &value{key: keyA, value: valueA}),
 	}
 }
 
 func (b *bitmasked) set(key key, newValue any) node {
 	currentSubNode := b
-	
-	for {
-		pos := bitPosition(key.hash, currentSubNode.level)
 
-		valueExists := currentSubNode.valueMap&pos != 0
-		subNodeExists := currentSubNode.subMapsMap&pos != 0
+	pos := bitPosition(key.hash, currentSubNode.level)
 
-		valueIdx := currentSubNode.index(pos)
+	valueExists := currentSubNode.valueMap&pos != 0
+	subNodeExists := currentSubNode.subMapsMap&pos != 0
 
-		if valueExists && subNodeExists {
-			panic(fmt.Sprintf("both value and subnode exist at the same position: %s", key.key))
+	valueIdx := currentSubNode.index(pos)
+
+	if valueExists && subNodeExists {
+		panic(fmt.Sprintf("both value and subnode exist at the same position: %s", key.key))
+	}
+
+	var indexedNode node
+	if len(currentSubNode.values) > valueIdx {
+		indexedNode = currentSubNode.values[valueIdx]
+	}
+
+	switch {
+	// The hash partition exists and is a sub node.
+	// We will recursively set the value in the sub node.
+	case subNodeExists:
+		subNode, ok := indexedNode.(*bitmasked)
+		if !ok {
+			panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, indexedNode))
 		}
 
-		var indexedNode node
-		if len(currentSubNode.values) > valueIdx {
-			indexedNode = currentSubNode.values[valueIdx]
-		} else {
-			indexedNode = nil
+		newValues := make([]node, len(currentSubNode.values), len(currentSubNode.values)+5)
+		copy(newValues, currentSubNode.values)
+
+		newValues[valueIdx] = subNode.set(key, newValue)
+
+		return &bitmasked{
+			level:      currentSubNode.level,
+			valueMap:   currentSubNode.valueMap,
+			subMapsMap: currentSubNode.subMapsMap,
+			values:     newValues,
 		}
 
-		switch {
-		// The leaf node exists.
-		// This branch will set the new value if the key exists.
-		// If the hash collides, it will create a new sub node.
-		case valueExists:
-			existingValue, ok := indexedNode.(value)
-			if !ok {
-				panic(fmt.Sprintf("value not correct type: %s, %T", key.key, indexedNode))
-			}
+	// The leaf node exists.
+	// This branch will set the new value if the key exists.
+	// If the hash collides, it will create a new sub node.
+	case valueExists:
+		existingValue, ok := indexedNode.(*value)
+		if !ok {
+			panic(fmt.Sprintf("value not correct type: %s, %T", key.key, indexedNode))
+		}
 
-			if existingValue.key.hash == key.hash && existingValue.key.key == key.key {
-				newValues := make([]node, len(currentSubNode.values))
-				copy(newValues, currentSubNode.values)
-				newValues[valueIdx] = value{key: key, value: newValue}
+		newValues := make([]node, len(currentSubNode.values), len(currentSubNode.values)+5)
+		copy(newValues, currentSubNode.values)
 
-				return &bitmasked{
-					level:      currentSubNode.level,
-					valueMap:   currentSubNode.valueMap,
-					subMapsMap: currentSubNode.subMapsMap,
-					values:     newValues,
-				}
-			}
-
-			newValues := make([]node, len(currentSubNode.values))
-			copy(newValues, currentSubNode.values)
-			newValues[valueIdx] = currentSubNode.mergeValueToSubNode(currentSubNode.level+1, existingValue.key, existingValue.value, key, newValue)
-
-			return &bitmasked{
-				level:      currentSubNode.level,
-				valueMap:   currentSubNode.valueMap ^ pos,
-				subMapsMap: currentSubNode.subMapsMap | pos,
-				values:     newValues,
-			}
-		// The hash partition exists and is a sub node.
-		// We will recursively set the value in the sub node.
-		case subNodeExists:
-			subNode, ok := indexedNode.(*bitmasked)
-			if !ok {
-				panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, indexedNode))
-			}
-
-			newValues := make([]node, len(currentSubNode.values))
-			copy(newValues, currentSubNode.values)
-
-			newValues[valueIdx] = subNode.set(key, newValue)
+		if existingValue.key.hash == key.hash && existingValue.key.key == key.key {
+			newValues[valueIdx] = &value{key: key, value: newValue}
 
 			return &bitmasked{
 				level:      currentSubNode.level,
@@ -198,44 +187,40 @@ func (b *bitmasked) set(key key, newValue any) node {
 				subMapsMap: currentSubNode.subMapsMap,
 				values:     newValues,
 			}
+		}
 
-		// The hash partition does not exist.
-		// We will create a new value in the current node.
-		default:
-			copiedValues := make([]node, len(currentSubNode.values))
-			copy(copiedValues, currentSubNode.values)
+		newValues[valueIdx] = currentSubNode.mergeValueToSubNode(currentSubNode.level+1, existingValue.key, existingValue.value, key, newValue)
 
-			var before []node
-			if len(copiedValues) > 0 {
-				before = copiedValues[:valueIdx]
-			} else {
-				before = []node{}
-			}
+		return &bitmasked{
+			level:      currentSubNode.level,
+			valueMap:   currentSubNode.valueMap ^ pos,
+			subMapsMap: currentSubNode.subMapsMap | pos,
+			values:     newValues,
+		}
 
-			var after []node
-			if valueIdx < len(copiedValues) {
-				after = copiedValues[valueIdx:]
-			} else {
-				after = []node{}
-			}
+	// The hash partition does not exist.
+	// We will create a new value in the current node.
+	default:
+		before := currentSubNode.values[:valueIdx]
+		after := currentSubNode.values[valueIdx:]
 
-			var newValues = make([]node, 0, len(currentSubNode.values)+1)
-			newValues = append(newValues, before...)
-			newValues = append(newValues, value{key: key, value: newValue})
-			newValues = append(newValues, after...)
+		var newValues = make([]node, 0, len(currentSubNode.values)+5)
+		newValues = append(newValues, before...)
+		newValues = append(newValues, &value{key: key, value: newValue})
+		newValues = append(newValues, after...)
 
-			return &bitmasked{
-				valueMap:   currentSubNode.valueMap | pos,
-				subMapsMap: currentSubNode.subMapsMap,
-				level:      currentSubNode.level,
-				values:     newValues,
-			}
+		return &bitmasked{
+			valueMap:   currentSubNode.valueMap | pos,
+			subMapsMap: currentSubNode.subMapsMap,
+			level:      currentSubNode.level,
+			values:     newValues,
 		}
 	}
+
 }
 
 func (b *bitmasked) copy() node {
-	newValues := make([]node, len(b.values))
+	newValues := make([]node, len(b.values), len(b.values))
 
 	for i, v := range b.values {
 		newValues[i] = v.copy()

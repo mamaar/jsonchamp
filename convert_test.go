@@ -189,7 +189,7 @@ func TestFromNativeMap(t *testing.T) {
 
 			got := FromNativeMap(tt.in)
 
-			if diff, _ := got.Diff(tt.want); len(diff.Keys()) > 0 {
+			if diff := got.Diff(tt.want); len(diff.Keys()) > 0 {
 				out, _ := json.MarshalIndent(diff, "", "  ")
 				t.Fatalf("%s", out)
 			}

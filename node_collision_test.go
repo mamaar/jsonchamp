@@ -8,7 +8,7 @@ func TestCollisionGet(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		setuo func() *collision
+		setup func() *collision
 
 		key uint64
 
@@ -16,26 +16,29 @@ func TestCollisionGet(t *testing.T) {
 		expectedOk    bool
 	}{
 		{
-			setuo: func() *collision {
-				return &collision{values: []value{{key: newKey("key", 1), value: "hello"}}}
+			setup: func() *collision {
+				return &collision{values: map[string]*value{
+					"key": {key: newKey("key", 1), value: "hello"},
+				}}
 			},
 			key:           1,
 			expectedOk:    true,
 			expectedValue: "hello",
 		},
 		{
-			setuo: func() *collision {
-				return &collision{values: []value{{key: newKey("key", 1), value: "world"}}}
+			setup: func() *collision {
+				return &collision{values: map[string]*value{
+					"key": {key: newKey("key", 1), value: "world"},
+				}}
 			},
 			key:           2,
 			expectedOk:    false,
 			expectedValue: nil,
 		},
 		{
-			setuo: func() *collision {
-				return &collision{values: []value{
-					{key: newKey("key", 1), value: "hello"},
-					{key: newKey("key", 2), value: "world"},
+			setup: func() *collision {
+				return &collision{values: map[string]*value{
+					"key": {key: newKey("key", 2), value: "world"},
 				}}
 			},
 			key:           2,
@@ -45,7 +48,7 @@ func TestCollisionGet(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		c := tt.setuo()
+		c := tt.setup()
 		got, ok := c.get(newKey("key", tt.key))
 
 		if ok != tt.expectedOk {
@@ -69,7 +72,9 @@ func TestCollisionSet(t *testing.T) {
 	)
 
 	var c node
-	c = &collision{values: []value{{key: newKey(key1, 1), value: hello}}}
+	c = &collision{values: map[string]*value{
+		key1: {key: newKey(key1, 1), value: hello},
+	}}
 
 	c = c.set(newKey(key2, 1), world)
 

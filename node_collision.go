@@ -1,17 +1,15 @@
 package jsonchamp
 
+import (
+	"maps"
+)
+
 type collision struct {
-	values []value
+	values map[string]*value
 }
 
 func (c *collision) copy() node {
-	newValues := make([]value, len(c.values))
-	for i, v := range c.values {
-		newValues[i] = value{
-			key:   v.key,
-			value: v.value,
-		}
-	}
+	newValues := maps.Clone(c.values)
 
 	return &collision{values: newValues}
 }
@@ -29,26 +27,14 @@ func (c *collision) get(key key) (any, bool) {
 
 // Set implements node.
 func (c *collision) set(key key, newValue any) node {
-	newCollision := make([]value, len(c.values), len(c.values)+1)
-	copy(newCollision, c.values)
-
-	for i, v := range c.values {
-		if v.key == key {
-			newCollision[i] = value{
-				key:   key,
-				value: newValue,
-			}
-
-			return &collision{values: newCollision}
-		}
-	}
-
-	newCollision = append(newCollision, value{
+	newCollision := c.copy().(*collision)
+	
+	newCollision.values[key.key] = &value{
 		key:   key,
 		value: newValue,
-	})
+	}
 
-	return &collision{values: newCollision}
+	return newCollision
 }
 
 var _ node = &collision{

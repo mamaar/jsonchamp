@@ -1,7 +1,6 @@
 package jsonchamp
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 )
@@ -145,7 +144,7 @@ func TestMapEquals(t *testing.T) {
 			t.Parallel()
 
 			if got := tt.args.f.Equals(tt.args.other); got != tt.want {
-				diff, _ := tt.args.f.Diff(tt.args.other)
+				diff := tt.args.f.Diff(tt.args.other)
 				t.Errorf("Equals() = %v, want %v", got, tt.want)
 				t.Errorf("Diff() = %v", diff)
 			}
@@ -263,10 +262,7 @@ func TestDiff(t *testing.T) {
 			one := tt.args.one
 			other := tt.args.other
 
-			diff, err := one.Diff(other)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			diff := one.Diff(other)
 
 			if tt.expectedHasDiff && !diff.Equals(tt.wantDiff) {
 				t.Errorf("expected equality: %v", tt.expectedHasDiff)
@@ -316,10 +312,7 @@ func TestDiffMapNoNested(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			diff, err := tt.first.Diff(tt.second)
-			if !errors.Is(err, tt.expectedError) {
-				t.Fatalf("expected error: %v, got: %v", tt.expectedError, err)
-			}
+			diff := tt.first.Diff(tt.second)
 
 			if tt.expectedError != nil {
 				return
@@ -327,10 +320,6 @@ func TestDiffMapNoNested(t *testing.T) {
 
 			if !diff.Equals(tt.diff) {
 				t.Fatalf("expected diff: %v, got: %v", tt.diff, diff)
-			}
-
-			if !errors.Is(err, tt.expectedError) {
-				t.Fatalf("expected error: %v, got: %v", tt.expectedError, err)
 			}
 		})
 	}
@@ -372,12 +361,7 @@ func TestDiffMapNested(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			diff, err := tt.first.Diff(tt.second)
-
-			if !errors.Is(err, tt.expectedError) {
-				t.Fatalf("expected error: %v, got: %v", tt.expectedError, err)
-			}
+			diff := tt.first.Diff(tt.second)
 
 			if tt.expectedError != nil {
 				return
@@ -385,10 +369,6 @@ func TestDiffMapNested(t *testing.T) {
 
 			if !diff.Equals(tt.diff) {
 				t.Errorf("expected diff: %v, got: %v", tt.diff, diff)
-			}
-
-			if !errors.Is(err, tt.expectedError) {
-				t.Errorf("expected error: %v, got: %v", tt.expectedError, err)
 			}
 		})
 	}

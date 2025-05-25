@@ -259,7 +259,7 @@ func (m *Map) UnmarshalJSON(d []byte) error {
 			level:      0,
 			valueMap:   0,
 			subMapsMap: 0,
-			values:     []node{},
+			values:     make([]node, 0, 5),
 		}
 	}
 

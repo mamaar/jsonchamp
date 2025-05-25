@@ -25,7 +25,7 @@ func TestBitmapGet(t *testing.T) {
 					level:      0,
 					valueMap:   0b0000_0000_0000_0000,
 					subMapsMap: 0,
-					values:     []node{value{key: newKey("key", 1), value: "hello"}},
+					values:     []node{&value{key: newKey("key", 1), value: "hello"}},
 				}
 			},
 			key:           newKey("key", 1<<10),
@@ -39,7 +39,7 @@ func TestBitmapGet(t *testing.T) {
 					level:      0,
 					valueMap:   0b0000_0001,
 					subMapsMap: 0,
-					values:     []node{value{key: newKey("key", 1), value: "world"}},
+					values:     []node{&value{key: newKey("key", 1), value: "world"}},
 				}
 			},
 			key:           newKey("key", 2),
@@ -53,7 +53,7 @@ func TestBitmapGet(t *testing.T) {
 					level:      0,
 					valueMap:   0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
 					subMapsMap: 0,
-					values:     []node{value{key: newKey("key", 1<<63), value: "hello"}},
+					values:     []node{&value{key: newKey("key", 1<<63), value: "hello"}},
 				}
 			},
 			key:           newKey("key", 1<<63),
@@ -67,9 +67,9 @@ func TestBitmapGet(t *testing.T) {
 					level:      0,
 					valueMap:   0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
 					subMapsMap: 0,
-					values: []node{&collision{values: []value{
-						{key: newKey("key_1", 1<<63), value: "hello"},
-						{key: newKey("key_2", 1<<63), value: "world"}}}},
+					values: []node{&collision{values: map[string]*value{
+						"key_1": {key: newKey("key_1", 1<<63), value: "hello"},
+						"key_2": {key: newKey("key_2", 1<<63), value: "world"}}}},
 				}
 			},
 			key:           key{key: "key_1", hash: 1 << 63},

@@ -50,7 +50,7 @@ func TestValueGet(t *testing.T) {
 func TestValueSet(t *testing.T) {
 	t.Parallel()
 
-	var v node = value{key: newKey("key", 1<<63), value: "hello"}
+	var v node = &value{key: newKey("key", 1<<63), value: "hello"}
 	v = v.set(newKey("key", 1<<63), "world")
 
 	world, ok := v.get(newKey("key", 1<<63))

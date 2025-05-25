@@ -63,7 +63,7 @@ func New(opts ...MapOption) *Map {
 	return &Map{
 		root: &bitmasked{
 			level:      0,
-			values:     []node{},
+			values:     make([]node, 0, 5),
 			valueMap:   0,
 			subMapsMap: 0,
 		},
@@ -174,8 +174,8 @@ func castPair[T any](a any, b any) (T, T) {
 // If the value of a key exists in both maps, the function will compare the values
 // and return the other value if they are different.
 // If the value of a key is a map in both maps, the function will compare the maps recursively.
-func (m *Map) Diff(other *Map) (*Map, error) {
-	return diffMap(m, other), nil
+func (m *Map) Diff(other *Map) *Map {
+	return diffMap(m, other)
 }
 
 // Get retrieves the value of a key from a map.

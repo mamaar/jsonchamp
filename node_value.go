@@ -12,15 +12,19 @@ type value struct {
 }
 
 // Set implements node.
-func (v value) set(key key, newValue any) node {
+func (v *value) set(key key, newValue any) node {
 	// Hash collision for different keys
 	if key.hash == v.key.hash && key.key != v.key.key {
 		var c node
 		c = &collision{
-			values: []value{},
+			values: map[string]*value{
+				v.key.key: v,
+				key.key: {
+					key:   key,
+					value: newValue,
+				},
+			},
 		}
-		c = c.set(v.key, v.value)
-		c = c.set(key, newValue)
 
 		return c
 	}
@@ -29,21 +33,21 @@ func (v value) set(key key, newValue any) node {
 		panic("key mismatch")
 	}
 
-	return value{
+	return &value{
 		key:   key,
 		value: newValue,
 	}
 }
 
-func (v value) copy() node {
-	return value{
+func (v *value) copy() node {
+	return &value{
 		key:   v.key,
 		value: v.value,
 	}
 }
 
 // Get implements node.
-func (v value) get(key key) (any, bool) {
+func (v *value) get(key key) (any, bool) {
 	if key == v.key {
 		return v.value, true
 	}
@@ -51,7 +55,7 @@ func (v value) get(key key) (any, bool) {
 	return nil, false
 }
 
-var _ node = value{
+var _ node = &value{
 	key: key{
 		key:  "",
 		hash: 0,

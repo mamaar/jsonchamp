@@ -221,10 +221,7 @@ func TestDeepJSONStructure(t *testing.T) {
 	result := deep.Set("items", items)
 	result = result.Set("array", []any{"value1", "value2", "value3"})
 
-	diff, err := deep.Diff(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	diff := deep.Diff(result)
 
 	t.Logf("diff: %v", diff.ToMap())
 }
