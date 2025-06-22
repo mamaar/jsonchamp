@@ -2,25 +2,25 @@ goos: linux
 goarch: amd64
 pkg: github.com/mamaar/jsonchamp
 cpu: AMD Ryzen 9 3900X 12-Core Processor            
-BenchmarkSet/fnv64/short-24         	  635968	      2176 ns/op
-BenchmarkSet/maphash/short-24       	  610257	      2910 ns/op
-BenchmarkSet/fnv64/medium-24        	  597390	      2167 ns/op
-BenchmarkSet/maphash/medium-24      	  620341	      2881 ns/op
-BenchmarkSet/fnv64/long-24          	  594643	      2162 ns/op
-BenchmarkSet/maphash/long-24        	  581460	      2826 ns/op
-BenchmarkSet/fnv64/huge-24          	  513031	      2234 ns/op
-BenchmarkSet/maphash/huge-24        	  543471	      2475 ns/op
-BenchmarkSet/fnv64/massive-24       	  350370	      3721 ns/op
-BenchmarkSet/maphash/massive-24     	  502586	      3019 ns/op
-BenchmarkGet/fnv64/short-24         	 3597009	       374.7 ns/op
-BenchmarkGet/maphash/short-24       	 2223121	       629.0 ns/op
-BenchmarkGet/fnv64/medium-24        	 3560468	       392.9 ns/op
-BenchmarkGet/maphash/medium-24      	 2110791	       619.0 ns/op
-BenchmarkGet/fnv64/long-24          	 3251288	       403.1 ns/op
-BenchmarkGet/maphash/long-24        	 2098356	       617.7 ns/op
-BenchmarkGet/fnv64/huge-24          	 2049748	       572.7 ns/op
-BenchmarkGet/maphash/huge-24        	 1628251	       782.0 ns/op
-BenchmarkGet/fnv64/massive-24       	  649329	      2109 ns/op
-BenchmarkGet/maphash/massive-24     	 1000000	      1545 ns/op
+BenchmarkSet/fnv64/short-24         	 1000000	      1032 ns/op
+BenchmarkSet/maphash/short-24       	 1000000	      1116 ns/op
+BenchmarkSet/fnv64/medium-24        	 1000000	      1043 ns/op
+BenchmarkSet/maphash/medium-24      	 1000000	      1100 ns/op
+BenchmarkSet/fnv64/long-24          	 1000000	      1053 ns/op
+BenchmarkSet/maphash/long-24        	 1000000	      1129 ns/op
+BenchmarkSet/fnv64/huge-24          	  856191	      1246 ns/op
+BenchmarkSet/maphash/huge-24        	 1000000	      1191 ns/op
+BenchmarkSet/fnv64/massive-24       	  437518	      2793 ns/op
+BenchmarkSet/maphash/massive-24     	  742638	      1973 ns/op
+BenchmarkGet/fnv64/short-24         	 4333958	       286.2 ns/op
+BenchmarkGet/maphash/short-24       	 1902062	       655.6 ns/op
+BenchmarkGet/fnv64/medium-24        	 4054578	       299.5 ns/op
+BenchmarkGet/maphash/medium-24      	 1920070	       660.5 ns/op
+BenchmarkGet/fnv64/long-24          	 3748964	       321.1 ns/op
+BenchmarkGet/maphash/long-24        	 1871275	       680.3 ns/op
+BenchmarkGet/fnv64/huge-24          	 2136981	       527.6 ns/op
+BenchmarkGet/maphash/huge-24        	 1485298	       837.1 ns/op
+BenchmarkGet/fnv64/massive-24       	  655965	      2120 ns/op
+BenchmarkGet/maphash/massive-24     	 1000000	      1770 ns/op
 PASS
-ok  	github.com/mamaar/jsonchamp	113.894s
+ok  	github.com/mamaar/jsonchamp	67.187s

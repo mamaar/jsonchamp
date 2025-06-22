@@ -25,7 +25,7 @@ func TestBitmapGet(t *testing.T) {
 					level:      0,
 					valueMap:   0b0000_0000_0000_0000,
 					subMapsMap: 0,
-					values:     []node{&value{key: newKey("key", 1), value: "hello"}},
+					values:     newCowSliceWithItems(&value{key: newKey("key", 1), value: "hello"}),
 				}
 			},
 			key:           newKey("key", 1<<10),
@@ -39,7 +39,7 @@ func TestBitmapGet(t *testing.T) {
 					level:      0,
 					valueMap:   0b0000_0001,
 					subMapsMap: 0,
-					values:     []node{&value{key: newKey("key", 1), value: "world"}},
+					values:     newCowSliceWithItems(&value{key: newKey("key", 1), value: "world"}),
 				}
 			},
 			key:           newKey("key", 2),
@@ -53,7 +53,7 @@ func TestBitmapGet(t *testing.T) {
 					level:      0,
 					valueMap:   0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
 					subMapsMap: 0,
-					values:     []node{&value{key: newKey("key", 1<<63), value: "hello"}},
+					values:     newCowSliceWithItems(&value{key: newKey("key", 1<<63), value: "hello"}),
 				}
 			},
 			key:           newKey("key", 1<<63),
@@ -67,9 +67,10 @@ func TestBitmapGet(t *testing.T) {
 					level:      0,
 					valueMap:   0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
 					subMapsMap: 0,
-					values: []node{&collision{values: map[string]*value{
+					values: newCowSliceWithItems(&collision{values: map[string]*value{
 						"key_1": {key: newKey("key_1", 1<<63), value: "hello"},
-						"key_2": {key: newKey("key_2", 1<<63), value: "world"}}}},
+						"key_2": {key: newKey("key_2", 1<<63), value: "world"},
+					}}),
 				}
 			},
 			key:           key{key: "key_1", hash: 1 << 63},
@@ -104,12 +105,12 @@ func TestBitmapSet(t *testing.T) {
 		level:      0,
 		valueMap:   0,
 		subMapsMap: 0,
-		values:     []node{},
+		values:     newCowSlice(),
 	}
 
 	c = c.set(newKey("key_1", 1<<63), "hello")
-	if len(c.(*bitmasked).values) != 1 {
-		t.Fatalf("set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
+	if c.(*bitmasked).values.Len() != 1 {
+		t.Fatalf("set(1) = %v; want %v", c.(*bitmasked).values.Len(), 1)
 	}
 
 	if _, ok := c.get(newKey("key_1", 1<<63)); !ok {
@@ -125,14 +126,14 @@ func TestBitmapSetWithCollision(t *testing.T) {
 		level:      0,
 		valueMap:   0,
 		subMapsMap: 0,
-		values:     []node{},
+		values:     newCowSlice(),
 	}
 
 	c = c.set(newKey("key_1", 1<<63), "hello")
 	c = c.set(newKey("key_2", 1<<63|1<<47), "world")
 
-	if len(c.(*bitmasked).values) != 1 {
-		t.Fatalf("set(1) = %v; want %v", len(c.(*bitmasked).values), 1)
+	if c.(*bitmasked).values.Len() != 1 {
+		t.Fatalf("set(1) = %v; want %v", c.(*bitmasked).values.Len(), 1)
 	}
 
 	if _, ok := c.get(newKey("key_1", 1<<63)); !ok {
@@ -257,46 +258,40 @@ func TestBitmapCopy(t *testing.T) {
 		level:      0,
 		valueMap:   0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
 		subMapsMap: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-		values: []node{&bitmasked{
-			level:      1,
-			valueMap:   0,
-			subMapsMap: 0,
-			values:     nil,
-		}, &bitmasked{
-			level:      2,
-			valueMap:   0,
-			subMapsMap: 0,
-			values:     nil,
-		}},
+		values: newCowSliceWithItems(
+			&bitmasked{
+				level:      1,
+				valueMap:   0,
+				subMapsMap: 0,
+				values:     nil,
+			}, &bitmasked{
+				level:      2,
+				valueMap:   0,
+				subMapsMap: 0,
+				values:     nil,
+			},
+		),
 	}
 
 	newB := b.copy().(*bitmasked)
 
 	if b.level != newB.level {
-		t.Errorf("level = %d; want %d", newB.level, b.level)
+		t.Fatalf("level = %d; want %d", newB.level, b.level)
 	}
 
 	if b.valueMap != newB.valueMap {
-		t.Errorf("valueMap = %064b; want %064b", newB.valueMap, b.valueMap)
+		t.Fatalf("valueMap = %064b; want %064b", newB.valueMap, b.valueMap)
 	}
 
 	if b.subMapsMap != newB.subMapsMap {
-		t.Errorf("subMapsMap = %064b; want %064b", newB.subMapsMap, b.subMapsMap)
+		t.Fatalf("subMapsMap = %064b; want %064b", newB.subMapsMap, b.subMapsMap)
 	}
 
-	if b.values[0] == newB.values[0] {
-		t.Errorf("values[0] = %v; want %v", newB.values[0], b.values[0])
+	if b.values.Get(0).(*bitmasked).level != newB.values.Get(0).(*bitmasked).level {
+		t.Fatalf("values[0].level = %d; want %d", newB.values.Get(0).(*bitmasked).level, b.values.Get(0).(*bitmasked).level)
 	}
 
-	if b.values[1] == newB.values[1] {
-		t.Errorf("values[1] = %v; want %v", newB.values[1], b.values[1])
-	}
-
-	if b.values[0].(*bitmasked).level != newB.values[0].(*bitmasked).level {
-		t.Errorf("values[0].level = %d; want %d", newB.values[0].(*bitmasked).level, b.values[0].(*bitmasked).level)
-	}
-
-	if b.values[1].(*bitmasked).level != newB.values[1].(*bitmasked).level {
-		t.Errorf("values[1].level = %d; want %d", newB.values[1].(*bitmasked).level, b.values[1].(*bitmasked).level)
+	if b.values.Get(1).(*bitmasked).level != newB.values.Get(1).(*bitmasked).level {
+		t.Fatalf("values[1].level = %d; want %d", newB.values.Get(1).(*bitmasked).level, b.values.Get(1).(*bitmasked).level)
 	}
 }

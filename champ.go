@@ -63,7 +63,7 @@ func New(opts ...MapOption) *Map {
 	return &Map{
 		root: &bitmasked{
 			level:      0,
-			values:     make([]node, 0, 5),
+			values:     newCowSlice(),
 			valueMap:   0,
 			subMapsMap: 0,
 		},
@@ -321,7 +321,7 @@ func (m *Map) Keys() []string {
 // If a key exists in both maps, the value from the other map will be used.
 // If the value of a key is a map in both maps, the maps will be merged recursively.
 func (m *Map) Merge(other *Map) *Map {
-	newMap := m.Copy()
+	newMap := m
 
 	for _, k := range other.Keys() {
 		v, _ := other.Get(k)
@@ -355,13 +355,13 @@ func (m *Map) Merge(other *Map) *Map {
 
 // Delete removes a key from the map and returns a new map without the key.
 func (m *Map) Delete(key string) (*Map, bool) {
-	n := m.Copy()
-	k := newKey(key, n.hash(key))
+	k := newKey(key, m.hash(key))
+	newRoot, wasDeleted := m.root.delete(k)
 
-	var wasDeleted bool
-	n.root, wasDeleted = n.root.delete(k)
-
-	return n, wasDeleted
+	return &Map{
+		root:   newRoot,
+		hasher: m.hasher,
+	}, wasDeleted
 }
 
 // Contains returns true if a key exists in the map.

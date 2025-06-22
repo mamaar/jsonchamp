@@ -482,7 +482,10 @@ func TestMerge(t *testing.T) {
 
 			got := tt.args.current.Merge(tt.args.diff)
 			if !got.Equals(tt.want) {
-				t.Errorf("Merge() = %v, want %v", got, tt.want)
+				gotS, _ := got.MarshalJSON()
+				wantS, _ := tt.want.MarshalJSON()
+				t.Errorf("%s != %s", gotS, wantS)
+				t.Fatalf("Merge() = %v, want %v", got, tt.want)
 			}
 		})
 	}

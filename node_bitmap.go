@@ -37,7 +37,7 @@ type bitmasked struct {
 	level      uint8
 	valueMap   uint64
 	subMapsMap uint64
-	values     []node
+	values     *cowSlice
 }
 
 func (b *bitmasked) index(pos uint64) int {
@@ -45,9 +45,9 @@ func (b *bitmasked) index(pos uint64) int {
 }
 
 func (b *bitmasked) keys() []string {
-	keys := make([]string, 0, len(b.values))
+	keys := make([]string, 0, b.values.Len())
 
-	for _, v := range b.values {
+	for _, v := range b.values.Values() {
 		switch value := v.(type) {
 		case *value:
 			keys = append(keys, value.key.key)
@@ -70,15 +70,19 @@ func (b *bitmasked) get(key key) (any, bool) {
 	if b.valueMap&pos != 0 {
 		valueIdx := b.index(pos)
 
-		return b.values[valueIdx].get(key)
+		val := b.values.Get(valueIdx)
+
+		return val.get(key)
 	}
 
 	if b.subMapsMap&pos != 0 {
 		subMapIndex := b.index(pos)
 
-		subMap, ok := b.values[subMapIndex].(*bitmasked)
+		subMapNode := b.values.Get(subMapIndex)
+
+		subMap, ok := subMapNode.(*bitmasked)
 		if !ok {
-			panic(fmt.Sprintf("submap not correct type: %s, %T", key.key, b.values[subMapIndex]))
+			panic(fmt.Sprintf("submap not correct type: %s, %T", key.key, subMapNode))
 		}
 
 		return subMap.get(key)
@@ -95,15 +99,13 @@ func (b *bitmasked) mergeValueToSubNode(newLevel uint8, keyA key, valueA any, ke
 	posA := bitPosition(keyA.hash, newLevel)
 	posB := bitPosition(keyB.hash, newLevel)
 
-	values := make([]node, 0, 5)
-
 	// Collides on next level
 	if posA == posB {
 		return &bitmasked{
 			level:      newLevel,
 			valueMap:   0,
 			subMapsMap: posA,
-			values: append(values,
+			values: newCowSliceWithItems(
 				b.mergeValueToSubNode(newLevel+1, keyA, valueA, keyB, valueB),
 			),
 		}
@@ -114,7 +116,10 @@ func (b *bitmasked) mergeValueToSubNode(newLevel uint8, keyA key, valueA any, ke
 			level:      newLevel,
 			valueMap:   posA | posB,
 			subMapsMap: 0,
-			values:     append(values, &value{key: keyA, value: valueA}, &value{key: keyB, value: valueB}),
+			values: newCowSliceWithItems(
+				&value{key: keyA, value: valueA},
+				&value{key: keyB, value: valueB},
+			),
 		}
 	}
 
@@ -122,7 +127,10 @@ func (b *bitmasked) mergeValueToSubNode(newLevel uint8, keyA key, valueA any, ke
 		level:      newLevel,
 		valueMap:   posA | posB,
 		subMapsMap: 0,
-		values:     append(values, &value{key: keyB, value: valueB}, &value{key: keyA, value: valueA}),
+		values: newCowSliceWithItems(
+			&value{key: keyB, value: valueB},
+			&value{key: keyA, value: valueA},
+		),
 	}
 }
 
@@ -141,8 +149,8 @@ func (b *bitmasked) set(key key, newValue any) node {
 	}
 
 	var indexedNode node
-	if len(currentSubNode.values) > valueIdx {
-		indexedNode = currentSubNode.values[valueIdx]
+	if currentSubNode.values.Len() > valueIdx {
+		indexedNode = currentSubNode.values.Get(valueIdx)
 	}
 
 	switch {
@@ -154,16 +162,11 @@ func (b *bitmasked) set(key key, newValue any) node {
 			panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, indexedNode))
 		}
 
-		newValues := make([]node, len(currentSubNode.values), len(currentSubNode.values)+5)
-		copy(newValues, currentSubNode.values)
-
-		newValues[valueIdx] = subNode.set(key, newValue)
-
 		return &bitmasked{
 			level:      currentSubNode.level,
 			valueMap:   currentSubNode.valueMap,
 			subMapsMap: currentSubNode.subMapsMap,
-			values:     newValues,
+			values:     currentSubNode.values.Set(valueIdx, subNode.set(key, newValue)),
 		}
 
 	// The leaf node exists.
@@ -175,68 +178,55 @@ func (b *bitmasked) set(key key, newValue any) node {
 			panic(fmt.Sprintf("value not correct type: %s, %T", key.key, indexedNode))
 		}
 
-		newValues := make([]node, len(currentSubNode.values), len(currentSubNode.values)+5)
-		copy(newValues, currentSubNode.values)
-
 		if existingValue.key.hash == key.hash && existingValue.key.key == key.key {
-			newValues[valueIdx] = &value{key: key, value: newValue}
-
 			return &bitmasked{
 				level:      currentSubNode.level,
 				valueMap:   currentSubNode.valueMap,
 				subMapsMap: currentSubNode.subMapsMap,
-				values:     newValues,
+				values:     currentSubNode.values.Set(valueIdx, &value{key: key, value: newValue}),
 			}
 		}
-
-		newValues[valueIdx] = currentSubNode.mergeValueToSubNode(currentSubNode.level+1, existingValue.key, existingValue.value, key, newValue)
 
 		return &bitmasked{
 			level:      currentSubNode.level,
 			valueMap:   currentSubNode.valueMap ^ pos,
 			subMapsMap: currentSubNode.subMapsMap | pos,
-			values:     newValues,
+			values: currentSubNode.values.Set(valueIdx,
+				currentSubNode.mergeValueToSubNode(
+					currentSubNode.level+1,
+					existingValue.key,
+					existingValue.value,
+					key,
+					newValue,
+				),
+			),
 		}
 
 	// The hash partition does not exist.
 	// We will create a new value in the current node.
 	default:
-		before := currentSubNode.values[:valueIdx]
-		after := currentSubNode.values[valueIdx:]
-
-		var newValues = make([]node, 0, len(currentSubNode.values)+5)
-		newValues = append(newValues, before...)
-		newValues = append(newValues, &value{key: key, value: newValue})
-		newValues = append(newValues, after...)
-
 		return &bitmasked{
 			valueMap:   currentSubNode.valueMap | pos,
 			subMapsMap: currentSubNode.subMapsMap,
 			level:      currentSubNode.level,
-			values:     newValues,
+			values:     currentSubNode.values.Insert(valueIdx, &value{key: key, value: newValue}),
 		}
 	}
 
 }
 
 func (b *bitmasked) copy() node {
-	newValues := make([]node, len(b.values), len(b.values))
-
-	for i, v := range b.values {
-		newValues[i] = v.copy()
-	}
-
 	return &bitmasked{
 		level:      b.level,
 		valueMap:   b.valueMap,
 		subMapsMap: b.subMapsMap,
-		values:     newValues,
+		values:     b.values.Share(),
 	}
 }
 
 // delete deletes a key from the map. If the key does not exist, it returns false.
 func (b *bitmasked) delete(key key) (*bitmasked, bool) {
-	if len(b.values) == 0 {
+	if b.values.Len() == 0 {
 		return b, false
 	}
 
@@ -248,7 +238,7 @@ func (b *bitmasked) delete(key key) (*bitmasked, bool) {
 
 		newMap := b.copy().(*bitmasked)
 		newMap.valueMap = b.valueMap ^ pos
-		newMap.values = append(b.values[:valueIdx], b.values[valueIdx+1:]...)
+		newMap.values = newMap.values.Delete(valueIdx)
 
 		return newMap, true
 	}
@@ -264,10 +254,10 @@ func (b *bitmasked) delete(key key) (*bitmasked, bool) {
 	}
 
 	subNodeIndex := b.index(pos)
-	subNode, ok := b.values[subNodeIndex].(*bitmasked)
+	subNode, ok := b.values.Get(subNodeIndex).(*bitmasked)
 
 	if !ok {
-		panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, b.values[subNodeIndex]))
+		panic(fmt.Sprintf("subnode not correct type: %s, %T", key.key, subNode))
 	}
 
 	subNodeCopy, ok := subNode.copy().(*bitmasked)
@@ -278,14 +268,14 @@ func (b *bitmasked) delete(key key) (*bitmasked, bool) {
 	subNodeCopy, ok = subNodeCopy.delete(key)
 
 	// The last key in the subnode was deleted, so we remove the subnode.
-	if len(subNodeCopy.values) == 0 {
+	if subNodeCopy.values.Len() == 0 {
 		newMap, isBitmasked := b.copy().(*bitmasked)
 		if !isBitmasked {
 			panic("expected bitmasked")
 		}
 
 		newMap.subMapsMap = b.subMapsMap ^ pos
-		newMap.values = append(b.values[:subNodeIndex], b.values[subNodeIndex+1:]...)
+		newMap.values = newMap.values.Delete(subNodeIndex)
 
 		return newMap, ok
 	}
@@ -295,7 +285,7 @@ func (b *bitmasked) delete(key key) (*bitmasked, bool) {
 		panic("expected bitmasked")
 	}
 
-	newB.values[subNodeIndex] = subNodeCopy
+	newB.values = newB.values.Set(subNodeIndex, subNodeCopy)
 
 	return newB, ok
 }
